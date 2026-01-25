@@ -1,6 +1,6 @@
 {
   "name": "slipstream-gui",
-  "version": "1.0.52",
+  "version": "1.0.53",
   "description": "SlipStream GUI Client with HTTP Proxy",
   "main": "main.js",
   "scripts": {

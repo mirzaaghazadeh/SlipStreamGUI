@@ -1328,7 +1328,7 @@ ipcMain.handle('check-update', async () => {
   }
 });
 
-// SemVer-ish comparison that safely handles prerelease strings like "1.0.52-beta".
+// SemVer-ish comparison that safely handles prerelease strings like "1.0.53-beta".
 // Returns: 1 if v1 > v2, -1 if v1 < v2, 0 if equal.
 function compareVersions(v1, v2) {
   function normalize(v) {
