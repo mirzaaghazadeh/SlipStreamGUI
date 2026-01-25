@@ -25,6 +25,9 @@ let verboseLogging = false; // Verbose logging toggle
 let socks5AuthEnabled = false;
 let socks5AuthUsername = '';
 let socks5AuthPassword = '';
+// System proxy lifecycle safety (only undo what THIS app enabled)
+let systemProxyEnabledByApp = false;
+let systemProxyServiceName = '';
 
 // Load settings from file
 const SETTINGS_FILE = path.join(__dirname, 'settings.json');
@@ -40,6 +43,8 @@ function loadSettings() {
       if (settings.socks5AuthEnabled !== undefined) socks5AuthEnabled = !!settings.socks5AuthEnabled;
       if (typeof settings.socks5AuthUsername === 'string') socks5AuthUsername = settings.socks5AuthUsername;
       if (typeof settings.socks5AuthPassword === 'string') socks5AuthPassword = settings.socks5AuthPassword;
+      if (settings.systemProxyEnabledByApp !== undefined) systemProxyEnabledByApp = !!settings.systemProxyEnabledByApp;
+      if (typeof settings.systemProxyServiceName === 'string') systemProxyServiceName = settings.systemProxyServiceName;
     }
   } catch (err) {
     console.error('Failed to load settings:', err);
@@ -55,7 +60,9 @@ function saveSettings(overrides = {}) {
       verbose: overrides.verbose ?? verboseLogging,
       socks5AuthEnabled: overrides.socks5AuthEnabled ?? socks5AuthEnabled,
       socks5AuthUsername: overrides.socks5AuthUsername ?? socks5AuthUsername,
-      socks5AuthPassword: overrides.socks5AuthPassword ?? socks5AuthPassword
+      socks5AuthPassword: overrides.socks5AuthPassword ?? socks5AuthPassword,
+      systemProxyEnabledByApp: overrides.systemProxyEnabledByApp ?? systemProxyEnabledByApp,
+      systemProxyServiceName: overrides.systemProxyServiceName ?? systemProxyServiceName
     };
 
     fs.writeFileSync(SETTINGS_FILE, JSON.stringify(next, null, 2));
@@ -67,6 +74,8 @@ function saveSettings(overrides = {}) {
     socks5AuthEnabled = !!next.socks5AuthEnabled;
     socks5AuthUsername = next.socks5AuthUsername || '';
     socks5AuthPassword = next.socks5AuthPassword || '';
+    systemProxyEnabledByApp = !!next.systemProxyEnabledByApp;
+    systemProxyServiceName = next.systemProxyServiceName || '';
   } catch (err) {
     console.error('Failed to save settings:', err);
   }
@@ -80,6 +89,8 @@ let httpProxyServer = null;
 let isRunning = false;
 let tunManager = null;
 let systemProxyConfigured = false; // Track system proxy state
+let cleanupInProgress = false;
+let quitting = false;
 
 function canSendToWindow() {
   return !!(
@@ -257,7 +268,8 @@ function startSlipstreamClient(resolver, domain) {
     safeSend('slipstream-exit', code);
     sendStatusUpdate();
     if (isRunning) {
-      stopService();
+      // If SlipStream dies unexpectedly, ensure we also undo system proxy if we enabled it.
+      void cleanupAndDisableProxyIfNeeded('slipstream-exit');
     }
   });
 
@@ -345,7 +357,8 @@ function startHttpProxy() {
       const host = urlParts[0];
       const port = parseInt(urlParts[1] || '443');
       
-      logRequest(`🔒 CONNECT ${host}:${port} (HTTPS)`);
+      // CONNECT logs can be very noisy; show them only in verbose mode.
+      logRequest(`🔒 CONNECT ${host}:${port} (HTTPS)`, false, true);
       
       // Connect through SOCKS5
       const socksProxy = {
@@ -658,6 +671,9 @@ async function configureSystemProxy() {
               await execAsync(`networksetup -setwebproxystate "${iface}" on`);
               await execAsync(`networksetup -setsecurewebproxystate "${iface}" on`);
               console.log(`System proxy configured and enabled via networksetup on ${iface}`);
+              systemProxyEnabledByApp = true;
+              systemProxyServiceName = iface;
+              saveSettings({ systemProxyEnabledByApp, systemProxyServiceName });
               configured = true;
               break;
             } catch (err) {
@@ -677,6 +693,9 @@ async function configureSystemProxy() {
             await execAsync(`networksetup -setwebproxystate "${iface}" on`);
             await execAsync(`networksetup -setsecurewebproxystate "${iface}" on`);
             console.log(`System proxy configured and enabled via networksetup on ${iface}`);
+            systemProxyEnabledByApp = true;
+            systemProxyServiceName = iface;
+            saveSettings({ systemProxyEnabledByApp, systemProxyServiceName });
             configured = true;
           } catch (err) {
             console.error(`Failed to configure proxy on ${iface}:`, err.message);
@@ -690,6 +709,9 @@ async function configureSystemProxy() {
       try {
         await execAsync(`netsh winhttp set proxy proxy-server="127.0.0.1:${HTTP_PROXY_PORT}"`);
         console.log('System proxy configured via netsh');
+        systemProxyEnabledByApp = true;
+        systemProxyServiceName = 'winhttp';
+        saveSettings({ systemProxyEnabledByApp, systemProxyServiceName });
         configured = true;
       } catch (err) {
         console.error('Failed to configure proxy via netsh:', err.message);
@@ -704,6 +726,9 @@ async function configureSystemProxy() {
         await execAsync(`gsettings set org.gnome.system.proxy.https host '127.0.0.1'`);
         await execAsync(`gsettings set org.gnome.system.proxy.https port ${HTTP_PROXY_PORT}`);
         console.log('System proxy configured via gsettings');
+        systemProxyEnabledByApp = true;
+        systemProxyServiceName = 'gsettings';
+        saveSettings({ systemProxyEnabledByApp, systemProxyServiceName });
         configured = true;
       } catch (err) {
         console.error('Failed to configure proxy via gsettings:', err.message);
@@ -762,58 +787,133 @@ async function unconfigureSystemProxy() {
   
   try {
     if (platform === 'darwin') {
-      // macOS: Try to find active network interface and disable proxy
-      const interfaces = ['Wi-Fi', 'Ethernet'];
-      
-      for (const iface of interfaces) {
+      // macOS: Only disable proxies that match our 127.0.0.1:8080 config
+      async function disableIfMatches(iface) {
         try {
-          await execAsync(`networksetup -listnetworkserviceorder | grep -i "${iface}"`);
-          await execAsync(`networksetup -setwebproxystate "${iface}" off`);
-          await execAsync(`networksetup -setsecurewebproxystate "${iface}" off`);
+          const [{ stdout: web }, { stdout: sec }] = await Promise.all([
+            execAsync(`networksetup -getwebproxy "${iface}"`).catch(() => ({ stdout: '' })),
+            execAsync(`networksetup -getsecurewebproxy "${iface}"`).catch(() => ({ stdout: '' }))
+          ]);
+
+          const matches =
+            (web.includes('Enabled: Yes') && web.includes('127.0.0.1') && web.includes(String(HTTP_PROXY_PORT))) ||
+            (sec.includes('Enabled: Yes') && sec.includes('127.0.0.1') && sec.includes(String(HTTP_PROXY_PORT)));
+
+          if (!matches) return false;
+
+          await execAsync(`networksetup -setwebproxystate "${iface}" off`).catch(() => {});
+          await execAsync(`networksetup -setsecurewebproxystate "${iface}" off`).catch(() => {});
           console.log(`System proxy unconfigured via networksetup on ${iface}`);
-          systemProxyConfigured = false;
-          sendStatusUpdate();
           return true;
-        } catch (err) {
-          continue;
+        } catch (_) {
+          return false;
         }
       }
-      
-      // Try to get first available interface
-      try {
-        const { stdout } = await execAsync('networksetup -listnetworkserviceorder | grep "Hardware Port" | head -1 | sed "s/.*: //"');
-        const iface = stdout.trim();
-        if (iface) {
-          await execAsync(`networksetup -setwebproxystate "${iface}" off`);
-          await execAsync(`networksetup -setsecurewebproxystate "${iface}" off`);
-          console.log(`System proxy unconfigured via networksetup on ${iface}`);
-          systemProxyConfigured = false;
-          sendStatusUpdate();
-          return true;
-        }
-      } catch (err) {
-        console.error('Failed to unconfigure proxy via networksetup:', err);
-        systemProxyConfigured = false;
-        sendStatusUpdate();
-        return false;
+
+      let changed = false;
+      // Prefer the service we configured earlier (safer)
+      if (systemProxyServiceName) {
+        changed = await disableIfMatches(systemProxyServiceName);
       }
-      
+
+      if (!changed) {
+        // Fallback: scan services and disable only those matching our config
+        try {
+          const { stdout } = await execAsync('networksetup -listallnetworkservices');
+          const services = stdout.split('\n').filter(line => line.trim() && !line.includes('*') && !line.includes('An asterisk'));
+          for (const s of services) {
+            const iface = s.trim();
+            if (!iface) continue;
+            const did = await disableIfMatches(iface);
+            if (did) changed = true;
+          }
+        } catch (_) {
+          // ignore
+        }
+      }
+
       systemProxyConfigured = false;
+      if (changed) {
+        systemProxyEnabledByApp = false;
+        systemProxyServiceName = '';
+        saveSettings({ systemProxyEnabledByApp, systemProxyServiceName });
+      }
       sendStatusUpdate();
-      return false;
+      return changed;
     } else if (platform === 'win32') {
       // Windows: netsh
+      // Best-effort: only reset if it matches our localhost:8080 proxy
+      try {
+        const { stdout } = await execAsync('netsh winhttp show proxy');
+        const matches =
+          (stdout.includes('127.0.0.1:8080')) ||
+          (stdout.includes('127.0.0.1') && stdout.includes(String(HTTP_PROXY_PORT)));
+        if (!matches) {
+          systemProxyConfigured = false;
+          sendStatusUpdate();
+          return false;
+        }
+      } catch (_) {
+        // If we can't read status, but we think we enabled it, proceed.
+        if (!systemProxyEnabledByApp) {
+          systemProxyConfigured = false;
+          sendStatusUpdate();
+          return false;
+        }
+      }
+
       await execAsync('netsh winhttp reset proxy');
       console.log('System proxy unconfigured via netsh');
       systemProxyConfigured = false;
+      systemProxyEnabledByApp = false;
+      systemProxyServiceName = '';
+      saveSettings({ systemProxyEnabledByApp, systemProxyServiceName });
       sendStatusUpdate();
       return true;
     } else if (platform === 'linux') {
       // Linux: gsettings (GNOME)
       try {
+        // Best-effort: only disable if it matches our localhost:8080 proxy
+        let matches = false;
+        try {
+          const [{ stdout: mode }, { stdout: httpHost }, { stdout: httpPort }, { stdout: httpsHost }, { stdout: httpsPort }] =
+            await Promise.all([
+              execAsync(`gsettings get org.gnome.system.proxy mode`).catch(() => ({ stdout: '' })),
+              execAsync(`gsettings get org.gnome.system.proxy.http host`).catch(() => ({ stdout: '' })),
+              execAsync(`gsettings get org.gnome.system.proxy.http port`).catch(() => ({ stdout: '' })),
+              execAsync(`gsettings get org.gnome.system.proxy.https host`).catch(() => ({ stdout: '' })),
+              execAsync(`gsettings get org.gnome.system.proxy.https port`).catch(() => ({ stdout: '' }))
+            ]);
+
+          const m = String(mode || '');
+          const hh = String(httpHost || '');
+          const hp = String(httpPort || '');
+          const sh = String(httpsHost || '');
+          const sp = String(httpsPort || '');
+
+          const portStr = String(HTTP_PROXY_PORT);
+          matches =
+            m.includes('manual') &&
+            (
+              (hh.includes('127.0.0.1') && hp.includes(portStr)) ||
+              (sh.includes('127.0.0.1') && sp.includes(portStr))
+            );
+        } catch (_) {
+          matches = false;
+        }
+
+        if (!matches && !systemProxyEnabledByApp) {
+          systemProxyConfigured = false;
+          sendStatusUpdate();
+          return false;
+        }
+
         await execAsync(`gsettings set org.gnome.system.proxy mode 'none'`);
         console.log('System proxy unconfigured via gsettings');
         systemProxyConfigured = false;
+        systemProxyEnabledByApp = false;
+        systemProxyServiceName = '';
+        saveSettings({ systemProxyEnabledByApp, systemProxyServiceName });
         sendStatusUpdate();
         return true;
       } catch (err) {
@@ -983,7 +1083,41 @@ function stopService() {
   };
 }
 
-app.whenReady().then(() => {
+async function cleanupAndDisableProxyIfNeeded(reason = 'shutdown') {
+  if (cleanupInProgress) return;
+  cleanupInProgress = true;
+
+  try {
+    // Always stop local services first (best effort, sync)
+    try { stopService(); } catch (_) {}
+
+    // If THIS app enabled the system proxy, disable it on exit/crash.
+    if (systemProxyEnabledByApp) {
+      const timeoutMs = 8000;
+      const started = Date.now();
+      try {
+        await Promise.race([
+          unconfigureSystemProxy(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('cleanup timeout')), timeoutMs))
+        ]);
+      } catch (err) {
+        console.error(`Cleanup: failed to unconfigure system proxy (${reason}) after ${Date.now() - started}ms:`, err?.message || err);
+      }
+    }
+  } finally {
+    cleanupInProgress = false;
+  }
+}
+
+app.whenReady().then(async () => {
+  // Crash-recovery: if we previously enabled system proxy and the app died,
+  // attempt to restore the user's system on next start.
+  if (systemProxyEnabledByApp) {
+    try {
+      await cleanupAndDisableProxyIfNeeded('startup-recovery');
+    } catch (_) {}
+  }
+
   createWindow();
 
   app.on('activate', () => {
@@ -995,13 +1129,21 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
-    stopService();
-    app.quit();
+    // Ensure system proxy is turned off if we enabled it.
+    cleanupAndDisableProxyIfNeeded('window-all-closed').finally(() => {
+      quitting = true;
+      app.quit();
+    });
   }
 });
 
-app.on('before-quit', () => {
-  stopService();
+app.on('before-quit', (event) => {
+  if (quitting) return;
+  event.preventDefault();
+  cleanupAndDisableProxyIfNeeded('before-quit').finally(() => {
+    quitting = true;
+    app.quit();
+  });
 });
 
 // IPC handlers
@@ -1009,8 +1151,10 @@ ipcMain.handle('start-service', async (event, settings) => {
   return await startService(settings?.resolver, settings?.domain, settings?.tunMode || false);
 });
 
-ipcMain.handle('stop-service', () => {
-  return stopService();
+ipcMain.handle('stop-service', async () => {
+  // Stop VPN and also turn off system proxy if we enabled it.
+  await cleanupAndDisableProxyIfNeeded('user-stop');
+  return { success: true, message: 'Service stopped', details: getStatusDetails() };
 });
 
 ipcMain.handle('get-status', () => {
@@ -1028,8 +1172,26 @@ ipcMain.handle('get-settings', () => {
     verbose: verboseLogging,
     socks5AuthEnabled,
     socks5AuthUsername,
-    socks5AuthPassword
+    socks5AuthPassword,
+    systemProxyEnabledByApp,
+    systemProxyServiceName
   };
+});
+
+ipcMain.handle('set-resolver', (event, payload) => {
+  try {
+    const parsed = parseDnsServer(payload?.resolver);
+    if (!parsed) {
+      return { success: false, error: 'Invalid DNS resolver. Use IPv4:port (e.g. 1.1.1.1:53).' };
+    }
+
+    // Force port 53 (DNS Checker "Use" button behavior)
+    const normalized = `${parsed.ip}:53`;
+    saveSettings({ resolver: normalized });
+    return { success: true, resolver: normalized };
+  } catch (err) {
+    return { success: false, error: err?.message || String(err) };
+  }
 });
 
 ipcMain.handle('get-version', () => {
@@ -1229,6 +1391,30 @@ ipcMain.handle('toggle-system-proxy', async (event, enable) => {
     return { success: unconfigured, configured: systemProxyConfigured };
   }
 });
+
+// Best-effort cleanup for crashes/termination signals.
+function installProcessExitHandlers() {
+  const doExit = async (code, reason) => {
+    try { await cleanupAndDisableProxyIfNeeded(reason); } catch (_) {}
+    try { process.exit(code); } catch (_) {}
+  };
+
+  process.on('SIGINT', () => { void doExit(130, 'SIGINT'); });
+  process.on('SIGTERM', () => { void doExit(143, 'SIGTERM'); });
+  process.on('SIGHUP', () => { void doExit(129, 'SIGHUP'); });
+
+  process.on('uncaughtException', (err) => {
+    console.error('uncaughtException:', err);
+    void doExit(1, 'uncaughtException');
+  });
+
+  process.on('unhandledRejection', (reason) => {
+    console.error('unhandledRejection:', reason);
+    void doExit(1, 'unhandledRejection');
+  });
+}
+
+installProcessExitHandlers();
 
 ipcMain.handle('open-external', async (event, url) => {
   try {
