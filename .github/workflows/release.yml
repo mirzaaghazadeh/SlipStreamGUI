@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.0)'
+        required: true
+        type: string
 
 jobs:
   build-and-release:
@@ -77,13 +83,19 @@ jobs:
           name: SlipStream-GUI-Windows
           path: release/windows
 
-      - name: Extract version from tag
+      - name: Extract version from tag or input
         id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: v${{ steps.get_version.outputs.VERSION }}
           name: Release v${{ steps.get_version.outputs.VERSION }}
           body: |
             ## 🎉 SlipStream GUI v${{ steps.get_version.outputs.VERSION }}
@@ -95,7 +107,7 @@ jobs:
 
             ### ✨ What's New
 
-            See the [changelog](https://github.com/${{ github.repository }}/compare/v${{ steps.get_version.outputs.VERSION }}...main) for details.
+            ${{ github.event_name == 'workflow_dispatch' && 'Manual release triggered via GitHub Actions' || format('See the [changelog](https://github.com/{0}/compare/v{1}...main) for details.', github.repository, steps.get_version.outputs.VERSION) }}
 
             ### 🚀 Quick Start
 
@@ -110,7 +122,7 @@ jobs:
 
             ---
 
-            **Full Changelog**: https://github.com/${{ github.repository }}/compare/v${{ steps.get_version.outputs.VERSION }}...main
+            ${{ github.event_name == 'push' && format('**Full Changelog**: https://github.com/{0}/compare/v{1}...main', github.repository, steps.get_version.outputs.VERSION) || '' }}
           files: |
             release/macos/*
             release/windows/*

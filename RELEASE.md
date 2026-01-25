@@ -4,9 +4,23 @@ This document explains how to create a new release for SlipStream GUI.
 
 ## Automated Releases
 
-Releases are automatically created using GitHub Actions when you push a tag.
+Releases can be created in two ways:
 
-### Creating a Release
+### Method 1: Manual Trigger (Recommended)
+
+1. Go to **Actions** tab on GitHub
+2. Select **Release** workflow
+3. Click **Run workflow**
+4. Enter the version number (e.g., `1.0.0`)
+5. Click **Run workflow** button
+
+GitHub Actions will automatically:
+- Build the app for macOS and Windows
+- Create a GitHub release with tag `v1.0.0`
+- Upload the DMG and EXE installers
+- Generate release notes
+
+### Method 2: Tag Push
 
 1. **Update version** in `package.json`:
    ```json
