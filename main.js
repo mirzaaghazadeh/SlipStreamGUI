@@ -29,12 +29,50 @@ let socks5AuthPassword = '';
 let systemProxyEnabledByApp = false;
 let systemProxyServiceName = '';
 
-// Load settings from file
-const SETTINGS_FILE = path.join(__dirname, 'settings.json');
+// Settings storage:
+// - Dev (`npm start`): can read/write local settings file
+// - Packaged apps (GitHub releases): `__dirname` is inside app.asar (read-only)
+// Therefore, always store settings in Electron's userData directory (writable).
+const SETTINGS_FILE_BASENAME = 'settings.json';
+let SETTINGS_FILE = null;
+const LEGACY_SETTINGS_FILE = path.join(__dirname, SETTINGS_FILE_BASENAME);
+
+function getSettingsFilePath() {
+  try {
+    const dir = app.getPath('userData');
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+    } catch (_) {}
+    return path.join(dir, SETTINGS_FILE_BASENAME);
+  } catch (_) {
+    // Extremely defensive fallback (shouldn't happen in normal Electron runtime).
+    return path.join(__dirname, SETTINGS_FILE_BASENAME);
+  }
+}
+
+function ensureSettingsFilePath() {
+  if (!SETTINGS_FILE) SETTINGS_FILE = getSettingsFilePath();
+  return SETTINGS_FILE;
+}
+
 function loadSettings() {
   try {
-    if (fs.existsSync(SETTINGS_FILE)) {
-      const data = fs.readFileSync(SETTINGS_FILE, 'utf8');
+    const settingsPath = ensureSettingsFilePath();
+
+    // One-time migration: if a legacy settings file exists but userData settings doesn't,
+    // copy it to userData so packaged apps can persist changes.
+    if (!fs.existsSync(settingsPath) && fs.existsSync(LEGACY_SETTINGS_FILE)) {
+      try {
+        const legacyData = fs.readFileSync(LEGACY_SETTINGS_FILE, 'utf8');
+        fs.writeFileSync(settingsPath, legacyData);
+      } catch (err) {
+        // Non-fatal: we'll proceed without migration.
+        console.warn('Settings migration skipped:', err?.message || err);
+      }
+    }
+
+    if (fs.existsSync(settingsPath)) {
+      const data = fs.readFileSync(settingsPath, 'utf8');
       const settings = JSON.parse(data);
       if (settings.resolver) RESOLVER = settings.resolver;
       if (settings.domain) DOMAIN = settings.domain;
@@ -53,6 +91,7 @@ function loadSettings() {
 
 function saveSettings(overrides = {}) {
   try {
+    const settingsPath = ensureSettingsFilePath();
     const next = {
       resolver: overrides.resolver ?? RESOLVER,
       domain: overrides.domain ?? DOMAIN,
@@ -65,8 +104,8 @@ function saveSettings(overrides = {}) {
       systemProxyServiceName: overrides.systemProxyServiceName ?? systemProxyServiceName
     };
 
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(next, null, 2));
-
+    // Update in-memory state first so UI actions take effect immediately,
+    // even if the disk write fails for some reason.
     RESOLVER = next.resolver;
     DOMAIN = next.domain;
     useTunMode = next.mode === 'tun';
@@ -76,12 +115,12 @@ function saveSettings(overrides = {}) {
     socks5AuthPassword = next.socks5AuthPassword || '';
     systemProxyEnabledByApp = !!next.systemProxyEnabledByApp;
     systemProxyServiceName = next.systemProxyServiceName || '';
+
+    fs.writeFileSync(settingsPath, JSON.stringify(next, null, 2));
   } catch (err) {
     console.error('Failed to save settings:', err);
   }
 }
-
-loadSettings();
 
 let mainWindow;
 let slipstreamProcess = null;
@@ -1110,6 +1149,15 @@ async function cleanupAndDisableProxyIfNeeded(reason = 'shutdown') {
 }
 
 app.whenReady().then(async () => {
+  // Load settings after Electron is ready. On some platforms (notably Windows),
+  // calling app.getPath('userData') too early can fail and cause settings to not persist.
+  try {
+    ensureSettingsFilePath();
+    loadSettings();
+  } catch (err) {
+    console.error('Failed to initialize settings on ready:', err);
+  }
+
   // Crash-recovery: if we previously enabled system proxy and the app died,
   // attempt to restore the user's system on next start.
   if (systemProxyEnabledByApp) {
@@ -1449,19 +1497,30 @@ ipcMain.handle('test-proxy', async () => {
       });
       res.on('end', () => {
         const responseTime = Date.now() - startTime;
+        const status = Number(res.statusCode) || 0;
+
+        if (status < 200 || status >= 300) {
+          resolve({
+            success: false,
+            error: `Proxy returned HTTP ${status}${data ? `: ${String(data).slice(0, 200)}` : ''}`,
+            responseTime
+          });
+          return;
+        }
+
         try {
           const json = JSON.parse(data);
           resolve({
             success: true,
-            ip: json.origin,
-            responseTime: responseTime
+            ip: json.origin || 'Unknown',
+            responseTime
           });
         } catch (err) {
           resolve({
-            success: true,
-            ip: 'Unknown',
-            responseTime: responseTime,
-            raw: data
+            success: false,
+            error: `Invalid response from proxy (not JSON). ${String(err?.message || err)}`,
+            responseTime,
+            raw: String(data).slice(0, 200)
           });
         }
       });

@@ -70,7 +70,9 @@
       "!*.md",
       "!.gitignore",
       "!**/*.md",
-      "!**/.gitignore"
+      "!**/.gitignore",
+      "!settings.json",
+      "!**/settings.json"
     ],
     "mac": {
       "extraResources": [
