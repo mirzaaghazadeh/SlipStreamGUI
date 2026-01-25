@@ -37,13 +37,6 @@
 
 
 
-
----
-
-<div align="center">
-  <img src="intro.png" alt="SlipStream GUI" width="300">
-</div>
-
 ---
 
 ## 👀 Tour
