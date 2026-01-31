@@ -17,6 +17,14 @@ const HTTP_PROXY_PORT = 8080;
 const SOCKS5_PORT = 5201;
 const fs = require('fs');
 
+// Log uncaught errors to help diagnose crashes (e.g. Windows #4). Do not exit so user can report.
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception:', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled rejection at', promise, 'reason:', reason);
+});
+
 // Default settings
 let RESOLVER = '8.8.8.8:53';
 let DOMAIN = 's.example.com';
@@ -672,8 +680,11 @@ function startHttpProxy() {
       });
     });
 
-    httpProxyServer.listen(HTTP_PROXY_PORT, '127.0.0.1', () => {
-      console.log(`HTTP Proxy listening on port ${HTTP_PROXY_PORT}`);
+    // Bind to 0.0.0.0 so other devices on the network can use the proxy (e.g. phone over Wi‑Fi).
+    // See: https://github.com/mirzaaghazadeh/SlipStreamGUI/issues/8
+    const HTTP_PROXY_HOST = '0.0.0.0';
+    httpProxyServer.listen(HTTP_PROXY_PORT, HTTP_PROXY_HOST, () => {
+      console.log(`HTTP Proxy listening on ${HTTP_PROXY_HOST}:${HTTP_PROXY_PORT} (localhost and network)`);
       sendStatusUpdate();
       resolve();
     });
@@ -1047,7 +1058,7 @@ async function startService(resolver, domain, tunMode = false) {
       
       return { 
         success: true, 
-        message: 'Service started successfully. HTTP proxy is listening on 127.0.0.1:8080',
+        message: 'Service started successfully. HTTP proxy on 127.0.0.1:8080 (use your LAN IP:8080 for network sharing)',
         details: {
           slipstreamRunning: slipstreamProcess !== null && !slipstreamProcess.killed,
           proxyRunning: true,
@@ -1659,13 +1670,16 @@ ipcMain.handle('dns-check-single', async (event, payload) => {
       return { ok: false, error: 'Test domain is required (e.g. google.com).' };
     }
 
-    const ping = await pingHost(serverParsed.ip, pingTimeoutMs);
-    const dnsRes = ping.ok
-      ? await dnsResolveWithServer(serverParsed.serverForNode, domain, dnsTimeoutMs)
-      : { ok: false, timeMs: 0, answers: [], error: 'Ping failed' };
+    // Run DNS resolution regardless of ping. For dnstt/DoH/DoT, what matters is DNS working,
+    // not ICMP; many resolvers (e.g. 8.8.8.8, 9.9.9.9) may ping but not work with dnstt.
+    // See: https://github.com/mirzaaghazadeh/SlipStreamGUI/issues/6
+    const [ping, dnsRes] = await Promise.all([
+      pingHost(serverParsed.ip, pingTimeoutMs),
+      dnsResolveWithServer(serverParsed.serverForNode, domain, dnsTimeoutMs)
+    ]);
 
     let status = 'Unreachable';
-    if (ping.ok && dnsRes.ok) status = 'OK';
+    if (dnsRes.ok) status = 'OK';
     else if (ping.ok) status = 'Ping Only';
 
     return {
