@@ -399,6 +399,18 @@ function startHttpProxy() {
         if (isError) safeSend('slipstream-error', logMsg);
         else safeSend('slipstream-log', logMsg);
       };
+
+      // Prevent ECONNRESET/EPIPE on client disconnect from crashing the process (issue #4).
+      // Attach immediately so errors during async SocksClient.createConnection are handled.
+      const ignoreCodes = ['ECONNRESET', 'EPIPE', 'ECONNABORTED', 'ECANCELED', 'ETIMEDOUT'];
+      clientSocket.on('error', (err) => {
+        if (!ignoreCodes.includes(err.code)) {
+          logRequest(`❌ Client error: ${err.code}`, true);
+        }
+      });
+      clientSocket.on('close', () => {
+        // No-op here; tunnel .then() will attach a handler that cleans up targetSocket
+      });
       
       const urlParts = req.url.split(':');
       const host = urlParts[0];
@@ -445,14 +457,7 @@ function startHttpProxy() {
         clientSocket.setNoDelay(true);
         targetSocket.setNoDelay(true);
         
-        // Error handlers
-        const ignoreCodes = ['ECONNRESET', 'EPIPE', 'ECONNABORTED', 'ECANCELED', 'ETIMEDOUT'];
-        clientSocket.on('error', (err) => {
-          if (!ignoreCodes.includes(err.code)) {
-            logRequest(`❌ Client error: ${err.code}`, true);
-          }
-        });
-        
+        // Target socket error handler (clientSocket already has one above)
         targetSocket.on('error', (err) => {
           if (!ignoreCodes.includes(err.code)) {
             logRequest(`❌ Target error: ${err.code}`, true);
@@ -460,17 +465,18 @@ function startHttpProxy() {
         });
         
         // Close handlers
-        clientSocket.on('close', () => {
+        const onClientClose = () => {
           logRequest(`🔌 Client closed`, false, true);
           if (!targetSocket.destroyed) targetSocket.destroy();
-        });
-        
-        targetSocket.on('close', () => {
+        };
+        const onTargetClose = () => {
           logRequest(`🔌 Target closed`, false, true);
           if (!clientSocket.destroyed) clientSocket.destroy();
-        });
+        };
+        clientSocket.once('close', onClientClose);
+        targetSocket.once('close', onTargetClose);
         
-        // Pipe bidirectionally
+        // Pipe bidirectionally; pipe errors are handled by socket 'error' handlers
         clientSocket.pipe(targetSocket, { end: false });
         targetSocket.pipe(clientSocket, { end: false });
         
@@ -647,7 +653,13 @@ function startHttpProxy() {
     });
 
     httpProxyServer.on('upgrade', (req, socket, head) => {
-      // Handle WebSocket upgrades
+      // Handle WebSocket upgrades; prevent ECONNRESET from crashing process (issue #4)
+      const wsIgnoreCodes = ['ECONNRESET', 'EPIPE', 'ECONNABORTED', 'ECANCELED', 'ETIMEDOUT'];
+      socket.on('error', (err) => {
+        if (!wsIgnoreCodes.includes(err.code)) {
+          console.error('WebSocket proxy client error:', err.code, err.message);
+        }
+      });
       const urlParts = req.url.split(':');
       const host = urlParts[0];
       const port = parseInt(urlParts[1] || '80');
@@ -672,9 +684,15 @@ function startHttpProxy() {
           port: port
         }
       }).then((info) => {
-        info.socket.write(head);
-        info.socket.pipe(socket);
-        socket.pipe(info.socket);
+        const targetSocket = info.socket;
+        targetSocket.on('error', (err) => {
+          if (!wsIgnoreCodes.includes(err.code)) {
+            console.error('WebSocket proxy target error:', err.code, err.message);
+          }
+        });
+        targetSocket.write(head);
+        targetSocket.pipe(socket);
+        socket.pipe(targetSocket);
       }).catch((err) => {
         socket.end();
       });
@@ -1462,8 +1480,13 @@ function installProcessExitHandlers() {
   process.on('SIGTERM', () => { void doExit(143, 'SIGTERM'); });
   process.on('SIGHUP', () => { void doExit(129, 'SIGHUP'); });
 
+  // Don't exit on expected socket errors (issue #4: ECONNRESET under load crashes app)
+  const exitIgnoreCodes = ['ECONNRESET', 'EPIPE', 'ECONNABORTED', 'ECANCELED', 'ETIMEDOUT'];
   process.on('uncaughtException', (err) => {
     console.error('uncaughtException:', err);
+    if (err && exitIgnoreCodes.includes(err.code)) {
+      return; // Logged above; keep process running
+    }
     void doExit(1, 'uncaughtException');
   });
 
