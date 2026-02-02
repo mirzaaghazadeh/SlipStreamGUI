@@ -36,6 +36,11 @@ let socks5AuthPassword = '';
 // System proxy lifecycle safety (only undo what THIS app enabled)
 let systemProxyEnabledByApp = false;
 let systemProxyServiceName = '';
+// Windows WinINET proxy restore (HKCU\Internet Settings)
+let winInetPrevCaptured = false;
+let winInetPrevProxyEnable = null; // number 0/1 or null if unknown
+let winInetPrevProxyServer = '';
+let winInetPrevProxyOverride = '';
 
 // Settings storage:
 // - Dev (`npm start`): can read/write local settings file
@@ -91,6 +96,10 @@ function loadSettings() {
       if (typeof settings.socks5AuthPassword === 'string') socks5AuthPassword = settings.socks5AuthPassword;
       if (settings.systemProxyEnabledByApp !== undefined) systemProxyEnabledByApp = !!settings.systemProxyEnabledByApp;
       if (typeof settings.systemProxyServiceName === 'string') systemProxyServiceName = settings.systemProxyServiceName;
+      if (settings.winInetPrevCaptured !== undefined) winInetPrevCaptured = !!settings.winInetPrevCaptured;
+      if (settings.winInetPrevProxyEnable !== undefined) winInetPrevProxyEnable = settings.winInetPrevProxyEnable;
+      if (typeof settings.winInetPrevProxyServer === 'string') winInetPrevProxyServer = settings.winInetPrevProxyServer;
+      if (typeof settings.winInetPrevProxyOverride === 'string') winInetPrevProxyOverride = settings.winInetPrevProxyOverride;
     }
   } catch (err) {
     console.error('Failed to load settings:', err);
@@ -109,7 +118,11 @@ function saveSettings(overrides = {}) {
       socks5AuthUsername: overrides.socks5AuthUsername ?? socks5AuthUsername,
       socks5AuthPassword: overrides.socks5AuthPassword ?? socks5AuthPassword,
       systemProxyEnabledByApp: overrides.systemProxyEnabledByApp ?? systemProxyEnabledByApp,
-      systemProxyServiceName: overrides.systemProxyServiceName ?? systemProxyServiceName
+      systemProxyServiceName: overrides.systemProxyServiceName ?? systemProxyServiceName,
+      winInetPrevCaptured: overrides.winInetPrevCaptured ?? winInetPrevCaptured,
+      winInetPrevProxyEnable: overrides.winInetPrevProxyEnable ?? winInetPrevProxyEnable,
+      winInetPrevProxyServer: overrides.winInetPrevProxyServer ?? winInetPrevProxyServer,
+      winInetPrevProxyOverride: overrides.winInetPrevProxyOverride ?? winInetPrevProxyOverride
     };
 
     // Update in-memory state first so UI actions take effect immediately,
@@ -123,6 +136,10 @@ function saveSettings(overrides = {}) {
     socks5AuthPassword = next.socks5AuthPassword || '';
     systemProxyEnabledByApp = !!next.systemProxyEnabledByApp;
     systemProxyServiceName = next.systemProxyServiceName || '';
+    winInetPrevCaptured = !!next.winInetPrevCaptured;
+    winInetPrevProxyEnable = next.winInetPrevProxyEnable;
+    winInetPrevProxyServer = next.winInetPrevProxyServer || '';
+    winInetPrevProxyOverride = next.winInetPrevProxyOverride || '';
 
     fs.writeFileSync(settingsPath, JSON.stringify(next, null, 2));
   } catch (err) {
@@ -785,16 +802,53 @@ async function configureSystemProxy() {
         console.error('Failed to list network services:', err.message);
       }
     } else if (platform === 'win32') {
-      // Windows: netsh
+      // Windows: configure BOTH WinINET (most apps) and WinHTTP (some services).
+      // This addresses reports where "Configure System Proxy" had no effect on Windows apps (issue #11).
+      const proxyServer = `127.0.0.1:${HTTP_PROXY_PORT}`;
       try {
-        await execAsync(`netsh winhttp set proxy proxy-server="127.0.0.1:${HTTP_PROXY_PORT}"`);
-        console.log('System proxy configured via netsh');
+        // Capture previous WinINET proxy settings once so we can restore on disable/crash recovery.
+        if (!winInetPrevCaptured) {
+          try {
+            const { stdout } = await execAsync(
+              `powershell -NoProfile -Command "$p='HKCU:\\\\Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Internet Settings'; $v=Get-ItemProperty -Path $p -ErrorAction Stop; $o=[PSCustomObject]@{ProxyEnable=$v.ProxyEnable;ProxyServer=$v.ProxyServer;ProxyOverride=$v.ProxyOverride}; $o|ConvertTo-Json -Compress"`
+            );
+            const prev = JSON.parse(String(stdout || '').trim() || '{}');
+            winInetPrevProxyEnable = (prev.ProxyEnable === 0 || prev.ProxyEnable === 1) ? prev.ProxyEnable : null;
+            winInetPrevProxyServer = typeof prev.ProxyServer === 'string' ? prev.ProxyServer : '';
+            winInetPrevProxyOverride = typeof prev.ProxyOverride === 'string' ? prev.ProxyOverride : '';
+          } catch (_) {
+            // Non-fatal: we can still set the proxy, but restore may be best-effort.
+            winInetPrevProxyEnable = null;
+            winInetPrevProxyServer = '';
+            winInetPrevProxyOverride = '';
+          }
+          winInetPrevCaptured = true;
+          saveSettings({
+            winInetPrevCaptured,
+            winInetPrevProxyEnable,
+            winInetPrevProxyServer,
+            winInetPrevProxyOverride
+          });
+        }
+
+        // Set WinINET (user proxy used by browsers and most apps)
+        await execAsync(
+          `powershell -NoProfile -Command "$p='HKCU:\\\\Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Internet Settings'; ` +
+          `Set-ItemProperty -Path $p -Name ProxyEnable -Type DWord -Value 1; ` +
+          `Set-ItemProperty -Path $p -Name ProxyServer -Type String -Value '${proxyServer}'; ` +
+          `Set-ItemProperty -Path $p -Name ProxyOverride -Type String -Value '<local>'"`
+        );
+
+        // Set WinHTTP (used by some services)
+        await execAsync(`netsh winhttp set proxy proxy-server="${proxyServer}"`);
+
+        console.log('System proxy configured via WinINET + WinHTTP');
         systemProxyEnabledByApp = true;
-        systemProxyServiceName = 'winhttp';
+        systemProxyServiceName = 'winhttp+wininet';
         saveSettings({ systemProxyEnabledByApp, systemProxyServiceName });
         configured = true;
       } catch (err) {
-        console.error('Failed to configure proxy via netsh:', err.message);
+        console.error('Failed to configure proxy on Windows:', err.message);
       }
     } else if (platform === 'linux') {
       // Linux: gsettings (GNOME) or environment variables
@@ -921,7 +975,7 @@ async function unconfigureSystemProxy() {
       sendStatusUpdate();
       return changed;
     } else if (platform === 'win32') {
-      // Windows: netsh
+      // Windows: restore BOTH WinHTTP + WinINET (if we configured them)
       // Best-effort: only reset if it matches our localhost:8080 proxy
       try {
         const { stdout } = await execAsync('netsh winhttp show proxy');
@@ -931,7 +985,7 @@ async function unconfigureSystemProxy() {
         if (!matches) {
           systemProxyConfigured = false;
           sendStatusUpdate();
-          return false;
+          // Still try to restore WinINET if we enabled it.
         }
       } catch (_) {
         // If we can't read status, but we think we enabled it, proceed.
@@ -942,8 +996,42 @@ async function unconfigureSystemProxy() {
         }
       }
 
-      await execAsync('netsh winhttp reset proxy');
-      console.log('System proxy unconfigured via netsh');
+      // Restore WinINET (HKCU proxy) if it currently points at our proxy.
+      try {
+        const { stdout } = await execAsync(
+          `powershell -NoProfile -Command "$p='HKCU:\\\\Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Internet Settings'; ` +
+          `$v=Get-ItemProperty -Path $p -ErrorAction Stop; $o=[PSCustomObject]@{ProxyEnable=$v.ProxyEnable;ProxyServer=$v.ProxyServer;ProxyOverride=$v.ProxyOverride}; $o|ConvertTo-Json -Compress"`
+        );
+        const cur = JSON.parse(String(stdout || '').trim() || '{}');
+        const curServer = typeof cur.ProxyServer === 'string' ? cur.ProxyServer : '';
+        const curEnable = (cur.ProxyEnable === 0 || cur.ProxyEnable === 1) ? cur.ProxyEnable : null;
+        const matchesWinInet =
+          curEnable === 1 &&
+          (curServer.includes('127.0.0.1:8080') ||
+            (curServer.includes('127.0.0.1') && curServer.includes(String(HTTP_PROXY_PORT))));
+
+        if (matchesWinInet) {
+          // Restore previous settings if captured; otherwise disable proxy.
+          const prevEnable = (winInetPrevProxyEnable === 0 || winInetPrevProxyEnable === 1) ? winInetPrevProxyEnable : 0;
+          const prevServer = typeof winInetPrevProxyServer === 'string' ? winInetPrevProxyServer : '';
+          const prevOverride = typeof winInetPrevProxyOverride === 'string' ? winInetPrevProxyOverride : '';
+
+          await execAsync(
+            `powershell -NoProfile -Command "$p='HKCU:\\\\Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Internet Settings'; ` +
+            `Set-ItemProperty -Path $p -Name ProxyEnable -Type DWord -Value ${prevEnable}; ` +
+            `Set-ItemProperty -Path $p -Name ProxyServer -Type String -Value '${String(prevServer).replace(/'/g, "''")}'; ` +
+            `Set-ItemProperty -Path $p -Name ProxyOverride -Type String -Value '${String(prevOverride).replace(/'/g, "''")}'"`
+          );
+        }
+      } catch (err) {
+        console.error('Failed to restore WinINET proxy:', err?.message || err);
+      }
+
+      // Reset WinHTTP proxy (only if it matched earlier, or if we think we enabled it)
+      try {
+        await execAsync('netsh winhttp reset proxy');
+      } catch (_) {}
+      console.log('System proxy unconfigured via WinHTTP/WinINET restore');
       systemProxyConfigured = false;
       systemProxyEnabledByApp = false;
       systemProxyServiceName = '';

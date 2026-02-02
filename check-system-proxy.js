@@ -46,14 +46,30 @@ async function checkSystemProxyStatus() {
         return false;
       }
     } else if (platform === 'win32') {
-      // Windows: Check netsh proxy settings
+      // Windows: Check both WinHTTP (netsh) and WinINET (HKCU Internet Settings)
       try {
         const { stdout } = await execAsync('netsh winhttp show proxy');
         if (stdout.includes('127.0.0.1:8080') || stdout.includes('127.0.0.1') && stdout.includes('8080')) {
           return true;
         }
       } catch (err) {
-        return false;
+        // ignore and fall through to WinINET check
+      }
+
+      try {
+        const { stdout } = await execAsync(
+          `powershell -NoProfile -Command "$p='HKCU:\\\\Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Internet Settings'; ` +
+          `$v=Get-ItemProperty -Path $p -ErrorAction Stop; ` +
+          `$o=[PSCustomObject]@{ProxyEnable=$v.ProxyEnable;ProxyServer=$v.ProxyServer}; $o|ConvertTo-Json -Compress"`
+        );
+        const cur = JSON.parse(String(stdout || '').trim() || '{}');
+        const curServer = typeof cur.ProxyServer === 'string' ? cur.ProxyServer : '';
+        const enabled = cur.ProxyEnable === 1;
+        if (enabled && (curServer.includes('127.0.0.1:8080') || (curServer.includes('127.0.0.1') && curServer.includes('8080')))) {
+          return true;
+        }
+      } catch (err) {
+        // ignore
       }
     }
     
