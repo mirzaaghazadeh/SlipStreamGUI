@@ -1042,6 +1042,13 @@
                         Automatically configure system proxy settings to route all traffic through VPN
                     </div>
                 </div>
+                <div class="form-group">
+                    <label class="form-label">Proxy Bypass List (Split Tunneling)</label>
+                    <textarea class="form-input" id="proxyBypassInput" rows="3" placeholder="Enter domains or IPs to exclude from proxy (one per line)&#10;e.g. *.google.com&#10;192.168.1.0/24&#10;example.com" style="resize: vertical; font-family: monospace; font-size: 12px;"></textarea>
+                    <div class="settings-help">
+                        Domains and addresses listed here will bypass the proxy and connect directly. One entry per line. Changes apply on next proxy toggle.
+                    </div>
+                </div>
                 <div class="form-group proxy-auth-section">
                     <label class="form-label">
                         <span>Proxy Authentication</span>
@@ -1408,6 +1415,7 @@ SlipStream VPN Server</pre>
 
         let isRunning = false;
         let useTunMode = false;
+        let proxyBypassSaveTimer = null;
         let socks5AuthSaveTimer = null;
 
         function showDnsChecker() {
@@ -1602,6 +1610,23 @@ SlipStream VPN Server</pre>
             scheduleSocks5AuthSave();
         }
 
+        async function saveProxyBypassList() {
+            const text = document.getElementById('proxyBypassInput')?.value || '';
+            const list = text.split('\n').map(s => s.trim()).filter(Boolean);
+            try {
+                await ipcRenderer.invoke('set-proxy-bypass-list', list);
+            } catch (err) {
+                console.error('Error saving proxy bypass list:', err);
+            }
+        }
+
+        function scheduleProxyBypassSave() {
+            if (proxyBypassSaveTimer) clearTimeout(proxyBypassSaveTimer);
+            proxyBypassSaveTimer = setTimeout(() => {
+                saveProxyBypassList();
+            }, 500);
+        }
+
         async function startService() {
             // Ensure SOCKS5 auth settings are saved before starting.
             // This avoids a race where the user toggles/edits creds and immediately hits "Start VPN".
@@ -1623,6 +1648,12 @@ SlipStream VPN Server</pre>
                 }
 
                 await saveSocks5AuthSettings();
+                // Save bypass list before starting
+                if (proxyBypassSaveTimer) {
+                    clearTimeout(proxyBypassSaveTimer);
+                    proxyBypassSaveTimer = null;
+                }
+                await saveProxyBypassList();
             } catch (_) {
                 // Non-fatal: starting can still proceed, but auth may not apply until next restart.
             }
@@ -2162,6 +2193,16 @@ SlipStream VPN Server</pre>
             if (socksUserEl) socksUserEl.addEventListener('input', scheduleSocks5AuthSave);
             if (socksPassEl) socksPassEl.addEventListener('input', scheduleSocks5AuthSave);
             
+            // Load proxy bypass list
+            try {
+                const bypassResult = await ipcRenderer.invoke('get-proxy-bypass-list');
+                if (bypassResult?.success && Array.isArray(bypassResult.proxyBypassList)) {
+                    document.getElementById('proxyBypassInput').value = bypassResult.proxyBypassList.join('\n');
+                }
+            } catch (_) {}
+            const bypassEl = document.getElementById('proxyBypassInput');
+            if (bypassEl) bypassEl.addEventListener('input', scheduleProxyBypassSave);
+
             // Check system proxy status and update toggle (default to ON)
             const proxyStatus = await ipcRenderer.invoke('check-system-proxy');
             const toggle = document.getElementById('systemProxyToggle');

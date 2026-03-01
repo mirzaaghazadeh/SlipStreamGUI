@@ -36,6 +36,8 @@ let socks5AuthPassword = '';
 // System proxy lifecycle safety (only undo what THIS app enabled)
 let systemProxyEnabledByApp = false;
 let systemProxyServiceName = '';
+// Proxy bypass list (split tunneling: domains/addresses that skip the proxy)
+let proxyBypassList = [];
 // Windows WinINET proxy restore (HKCU\Internet Settings)
 let winInetPrevCaptured = false;
 let winInetPrevProxyEnable = null; // number 0/1 or null if unknown
@@ -100,6 +102,7 @@ function loadSettings() {
       if (settings.winInetPrevProxyEnable !== undefined) winInetPrevProxyEnable = settings.winInetPrevProxyEnable;
       if (typeof settings.winInetPrevProxyServer === 'string') winInetPrevProxyServer = settings.winInetPrevProxyServer;
       if (typeof settings.winInetPrevProxyOverride === 'string') winInetPrevProxyOverride = settings.winInetPrevProxyOverride;
+      if (Array.isArray(settings.proxyBypassList)) proxyBypassList = settings.proxyBypassList;
     }
   } catch (err) {
     console.error('Failed to load settings:', err);
@@ -122,7 +125,8 @@ function saveSettings(overrides = {}) {
       winInetPrevCaptured: overrides.winInetPrevCaptured ?? winInetPrevCaptured,
       winInetPrevProxyEnable: overrides.winInetPrevProxyEnable ?? winInetPrevProxyEnable,
       winInetPrevProxyServer: overrides.winInetPrevProxyServer ?? winInetPrevProxyServer,
-      winInetPrevProxyOverride: overrides.winInetPrevProxyOverride ?? winInetPrevProxyOverride
+      winInetPrevProxyOverride: overrides.winInetPrevProxyOverride ?? winInetPrevProxyOverride,
+      proxyBypassList: overrides.proxyBypassList ?? proxyBypassList
     };
 
     // Update in-memory state first so UI actions take effect immediately,
@@ -140,6 +144,7 @@ function saveSettings(overrides = {}) {
     winInetPrevProxyEnable = next.winInetPrevProxyEnable;
     winInetPrevProxyServer = next.winInetPrevProxyServer || '';
     winInetPrevProxyOverride = next.winInetPrevProxyOverride || '';
+    proxyBypassList = Array.isArray(next.proxyBypassList) ? next.proxyBypassList : [];
 
     fs.writeFileSync(settingsPath, JSON.stringify(next, null, 2));
   } catch (err) {
@@ -767,6 +772,11 @@ async function configureSystemProxy() {
               // Enable the proxy
               await execAsync(`networksetup -setwebproxystate "${iface}" on`);
               await execAsync(`networksetup -setsecurewebproxystate "${iface}" on`);
+              // Set bypass domains if configured
+              if (proxyBypassList.length > 0) {
+                const bypassDomains = proxyBypassList.join(' ');
+                await execAsync(`networksetup -setproxybypassdomains "${iface}" ${bypassDomains}`).catch(() => {});
+              }
               console.log(`System proxy configured and enabled via networksetup on ${iface}`);
               systemProxyEnabledByApp = true;
               systemProxyServiceName = iface;
@@ -789,6 +799,11 @@ async function configureSystemProxy() {
             // Enable the proxy
             await execAsync(`networksetup -setwebproxystate "${iface}" on`);
             await execAsync(`networksetup -setsecurewebproxystate "${iface}" on`);
+            // Set bypass domains if configured
+            if (proxyBypassList.length > 0) {
+              const bypassDomains = proxyBypassList.join(' ');
+              await execAsync(`networksetup -setproxybypassdomains "${iface}" ${bypassDomains}`).catch(() => {});
+            }
             console.log(`System proxy configured and enabled via networksetup on ${iface}`);
             systemProxyEnabledByApp = true;
             systemProxyServiceName = iface;
@@ -831,16 +846,24 @@ async function configureSystemProxy() {
           });
         }
 
+        // Build bypass string: user bypass list + <local>
+        const bypassEntries = proxyBypassList.length > 0
+          ? proxyBypassList.join(';') + ';<local>'
+          : '<local>';
+
         // Set WinINET (user proxy used by browsers and most apps)
         await execAsync(
           `powershell -NoProfile -Command "$p='HKCU:\\\\Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Internet Settings'; ` +
           `Set-ItemProperty -Path $p -Name ProxyEnable -Type DWord -Value 1; ` +
           `Set-ItemProperty -Path $p -Name ProxyServer -Type String -Value '${proxyServer}'; ` +
-          `Set-ItemProperty -Path $p -Name ProxyOverride -Type String -Value '<local>'"`
+          `Set-ItemProperty -Path $p -Name ProxyOverride -Type String -Value '${bypassEntries}'"`
         );
 
         // Set WinHTTP (used by some services)
-        await execAsync(`netsh winhttp set proxy proxy-server="${proxyServer}"`);
+        const bypassArg = proxyBypassList.length > 0
+          ? ` bypass-list="${bypassEntries}"`
+          : '';
+        await execAsync(`netsh winhttp set proxy proxy-server="${proxyServer}"${bypassArg}`);
 
         console.log('System proxy configured via WinINET + WinHTTP');
         systemProxyEnabledByApp = true;
@@ -859,6 +882,11 @@ async function configureSystemProxy() {
         await execAsync(`gsettings set org.gnome.system.proxy.http port ${HTTP_PROXY_PORT}`);
         await execAsync(`gsettings set org.gnome.system.proxy.https host '127.0.0.1'`);
         await execAsync(`gsettings set org.gnome.system.proxy.https port ${HTTP_PROXY_PORT}`);
+        // Set bypass (ignore-hosts) if configured
+        if (proxyBypassList.length > 0) {
+          const ignoreHosts = proxyBypassList.map(h => `'${h}'`).join(', ');
+          await execAsync(`gsettings set org.gnome.system.proxy ignore-hosts "[${ignoreHosts}]"`).catch(() => {});
+        }
         console.log('System proxy configured via gsettings');
         systemProxyEnabledByApp = true;
         systemProxyServiceName = 'gsettings';
@@ -1546,6 +1574,18 @@ ipcMain.handle('set-socks5-auth', (event, auth) => {
     socks5AuthUsername,
     socks5AuthPassword
   };
+});
+
+ipcMain.handle('set-proxy-bypass-list', (event, list) => {
+  if (!Array.isArray(list)) return { success: false };
+  // Sanitize: trim, remove empty, deduplicate
+  const cleaned = [...new Set(list.map(s => String(s).trim()).filter(Boolean))];
+  saveSettings({ proxyBypassList: cleaned });
+  return { success: true, proxyBypassList };
+});
+
+ipcMain.handle('get-proxy-bypass-list', () => {
+  return { success: true, proxyBypassList };
 });
 
 ipcMain.handle('check-system-proxy', async () => {

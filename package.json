@@ -1,6 +1,6 @@
 {
   "name": "slipstream-gui",
-  "version": "1.0.56",
+  "version": "1.0.57",
   "description": "SlipStream GUI Client with HTTP Proxy",
   "main": "main.js",
   "scripts": {
@@ -26,6 +26,8 @@
     "build:linux:x64": "electron-builder --linux --x64 --publish never",
     "prebuild:linux:arm64": "node scripts/verify-binaries.js --platform linux",
     "build:linux:arm64": "electron-builder --linux --arm64 --publish never",
+    "prebuild:win:portable": "node scripts/verify-binaries.js --platform win",
+    "build:win:portable": "electron-builder --win portable --publish never",
     "prebuild:all": "node scripts/verify-binaries.js --platform all",
     "build:all": "electron-builder --mac --win --linux --publish never"
   },
@@ -101,7 +103,10 @@
       "gatekeeperAssess": false
     },
     "win": {
-      "target": "nsis",
+      "target": [
+        "nsis",
+        "portable"
+      ],
       "icon": "assets/icon.png",
       "extraResources": [
         {
@@ -136,6 +141,9 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
+    },
+    "portable": {
+      "artifactName": "${productName}-Portable-${version}.${ext}"
     }
   }
 }
