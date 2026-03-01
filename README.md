@@ -64,8 +64,10 @@
 |----------|----------|
 | macOS (Apple Silicon) | [SlipStream-GUI-macOS-ARM64.dmg](https://github.com/mirzaaghazadeh/SlipStreamGUI/releases/latest/download/SlipStream-GUI-macOS-ARM64.dmg) |
 | macOS (Intel) | [SlipStream-GUI-macOS-Intel.dmg](https://github.com/mirzaaghazadeh/SlipStreamGUI/releases/latest/download/SlipStream-GUI-macOS-Intel.dmg) |
-| Windows (64-bit) | [SlipStream-GUI-Windows-x64.exe](https://github.com/mirzaaghazadeh/SlipStreamGUI/releases/latest/download/SlipStream-GUI-Windows-x64.exe) |
-| Windows (32-bit) | [SlipStream-GUI-Windows-x86.exe](https://github.com/mirzaaghazadeh/SlipStreamGUI/releases/latest/download/SlipStream-GUI-Windows-x86.exe) |
+| Windows (64-bit) Installer | [SlipStream-GUI-Windows-x64.exe](https://github.com/mirzaaghazadeh/SlipStreamGUI/releases/latest/download/SlipStream-GUI-Windows-x64.exe) |
+| Windows (64-bit) Portable | [SlipStream-GUI-Windows-x64-Portable.exe](https://github.com/mirzaaghazadeh/SlipStreamGUI/releases/latest/download/SlipStream-GUI-Windows-x64-Portable.exe) |
+| Windows (32-bit) Installer | [SlipStream-GUI-Windows-x86.exe](https://github.com/mirzaaghazadeh/SlipStreamGUI/releases/latest/download/SlipStream-GUI-Windows-x86.exe) |
+| Windows (32-bit) Portable | [SlipStream-GUI-Windows-x86-Portable.exe](https://github.com/mirzaaghazadeh/SlipStreamGUI/releases/latest/download/SlipStream-GUI-Windows-x86-Portable.exe) |
 | Linux (x86_64) AppImage | [SlipStream-GUI-Linux-x64.AppImage](https://github.com/mirzaaghazadeh/SlipStreamGUI/releases/latest/download/SlipStream-GUI-Linux-x64.AppImage) |
 | Linux (x86_64) DEB | [SlipStream-GUI-Linux-x64.deb](https://github.com/mirzaaghazadeh/SlipStreamGUI/releases/latest/download/SlipStream-GUI-Linux-x64.deb) |
 
@@ -91,6 +93,7 @@ That's it! No additional setup required.
    - **DNS Resolver**: Your DNS server (default: `8.8.8.8:53`)
    - **Domain**: Your SlipStream server domain (default: `s.example.com`)
    - **System Proxy**: Toggle to auto-configure system proxy (recommended)
+   - **Proxy Bypass List**: Add domains or IPs to exclude from the proxy (one per line, e.g. `*.google.com`, `192.168.1.0/24`)
 
 3. **DNS Checker (optional, recommended if you're unsure about DNS)**:
    - Click **"DNS Checker"**
@@ -154,7 +157,9 @@ bash <(curl -Ls https://raw.githubusercontent.com/AliRezaBeigy/slipstream-rust-d
 - 🔒 **System-Wide VPN**: Routes all traffic through SlipStream VPN
 - 🎨 **Modern GUI**: Intuitive interface with real-time status and logs
 - ⚙️ **Auto-Configuration**: Automatically configures system proxy settings
+- 🚫 **Proxy Bypass List**: Exclude specific domains or addresses from the proxy (split tunneling)
 - 📦 **Self-Contained**: All dependencies bundled (no internet required after installation)
+- 💼 **Portable Mode**: Windows portable version available (no installation required)
 - 🔍 **Verbose Logging**: Optional detailed logging for debugging
 - 🧪 **Connection Testing**: Built-in proxy connection tester
 - 📊 **Real-Time Status**: Monitor VPN connection status at a glance
@@ -332,8 +337,11 @@ npm run download:binaries
 # Build for macOS
 npm run build:mac
 
-# Build for Windows
+# Build for Windows (installer + portable)
 npm run build:win
+
+# Build for Windows (portable only)
+npm run build:win:portable
 
 # Build for Linux
 npm run build:linux
@@ -410,6 +418,8 @@ Settings are stored in `settings.json` (created automatically):
 - DNS Resolver
 - Domain
 - Verbose logging preference
+- Proxy bypass list (domains/addresses excluded from proxy)
+- SOCKS5 authentication credentials
 
 ---
 
