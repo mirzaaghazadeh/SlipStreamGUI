@@ -271,17 +271,29 @@ jobs:
         shell: bash
         run: |
           mkdir -p release/windows
+          # Process x64 artifacts (installer + portable)
           if [ -d release/windows/x64 ]; then
-            for f in release/windows/x64/*.exe; do
+            for f in release/windows/x64/*Setup*.exe; do
               [ -e "$f" ] || continue
               mv "$f" "release/windows/SlipStream-GUI-Windows-x64.exe"
               break
             done
+            for f in release/windows/x64/*Portable*.exe; do
+              [ -e "$f" ] || continue
+              mv "$f" "release/windows/SlipStream-GUI-Windows-x64-Portable.exe"
+              break
+            done
           fi
+          # Process x86 artifacts (installer + portable)
           if [ -d release/windows/x86 ]; then
-            for f in release/windows/x86/*.exe; do
+            for f in release/windows/x86/*Setup*.exe; do
               [ -e "$f" ] || continue
               mv "$f" "release/windows/SlipStream-GUI-Windows-x86.exe"
+              break
+            done
+            for f in release/windows/x86/*Portable*.exe; do
+              [ -e "$f" ] || continue
+              mv "$f" "release/windows/SlipStream-GUI-Windows-x86-Portable.exe"
               break
             done
           fi
@@ -355,8 +367,8 @@ jobs:
 
             - **macOS (Apple Silicon)**: Download the ARM64 DMG file below
             - **macOS (Intel)**: Download the Intel DMG file below
-            - **Windows (64-bit)**: Download the x64 EXE installer below
-            - **Windows (32-bit)**: Download the x86 EXE installer below
+            - **Windows (64-bit)**: Download the x64 EXE installer (or Portable) below
+            - **Windows (32-bit)**: Download the x86 EXE installer (or Portable) below
             - **Linux (64-bit)**: Download the x64 AppImage or DEB package below
 
             ### ✨ What's New
