@@ -98,7 +98,7 @@ That's it! No additional setup required.
 3. **DNS Checker (optional, recommended if you're unsure about DNS)**:
    - Click **"DNS Checker"**
    - Enter a **test domain** (example: `google.com`)
-   - Enter one or more **DNS server IPs** to test
+   - Enter one or more **DNS server IPs** to test (you can paste large lists; up to **100 servers** are checked in parallel)
    - **OK = OK** (no action needed)
    - Click **"Use"** on any **OK** row to auto-set your **DNS Resolver** (the app will force port `53`)
 
@@ -163,6 +163,7 @@ bash <(curl -Ls https://raw.githubusercontent.com/AliRezaBeigy/slipstream-rust-d
 - 🔍 **Verbose Logging**: Optional detailed logging for debugging
 - 🧪 **Connection Testing**: Built-in proxy connection tester
 - 📊 **Real-Time Status**: Monitor VPN connection status at a glance
+ - 🌐 **Concurrent DNS Checker**: Tests many DNS servers at once and lets you apply any **OK** result with one click
 
 ---
 
