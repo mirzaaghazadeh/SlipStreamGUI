@@ -43,6 +43,10 @@ let winInetPrevCaptured = false;
 let winInetPrevProxyEnable = null; // number 0/1 or null if unknown
 let winInetPrevProxyServer = '';
 let winInetPrevProxyOverride = '';
+// Manual workspaces/presets (e.g. "Home", "Cafe", "Work")
+// Each workspace currently stores resolver, domain and proxyBypassList.
+let workspaces = [];
+let activeWorkspaceId = null;
 
 // Settings storage:
 // - Dev (`npm start`): can read/write local settings file
@@ -103,6 +107,8 @@ function loadSettings() {
       if (typeof settings.winInetPrevProxyServer === 'string') winInetPrevProxyServer = settings.winInetPrevProxyServer;
       if (typeof settings.winInetPrevProxyOverride === 'string') winInetPrevProxyOverride = settings.winInetPrevProxyOverride;
       if (Array.isArray(settings.proxyBypassList)) proxyBypassList = settings.proxyBypassList;
+      if (Array.isArray(settings.workspaces)) workspaces = settings.workspaces;
+      if (typeof settings.activeWorkspaceId === 'string') activeWorkspaceId = settings.activeWorkspaceId;
     }
   } catch (err) {
     console.error('Failed to load settings:', err);
@@ -126,7 +132,9 @@ function saveSettings(overrides = {}) {
       winInetPrevProxyEnable: overrides.winInetPrevProxyEnable ?? winInetPrevProxyEnable,
       winInetPrevProxyServer: overrides.winInetPrevProxyServer ?? winInetPrevProxyServer,
       winInetPrevProxyOverride: overrides.winInetPrevProxyOverride ?? winInetPrevProxyOverride,
-      proxyBypassList: overrides.proxyBypassList ?? proxyBypassList
+      proxyBypassList: overrides.proxyBypassList ?? proxyBypassList,
+      workspaces: overrides.workspaces ?? workspaces,
+      activeWorkspaceId: overrides.activeWorkspaceId ?? activeWorkspaceId
     };
 
     // Update in-memory state first so UI actions take effect immediately,
@@ -145,6 +153,8 @@ function saveSettings(overrides = {}) {
     winInetPrevProxyServer = next.winInetPrevProxyServer || '';
     winInetPrevProxyOverride = next.winInetPrevProxyOverride || '';
     proxyBypassList = Array.isArray(next.proxyBypassList) ? next.proxyBypassList : [];
+    workspaces = Array.isArray(next.workspaces) ? next.workspaces : [];
+    activeWorkspaceId = typeof next.activeWorkspaceId === 'string' ? next.activeWorkspaceId : null;
 
     fs.writeFileSync(settingsPath, JSON.stringify(next, null, 2));
   } catch (err) {
@@ -182,10 +192,10 @@ function safeSend(channel, payload) {
 function createWindow() {
   const iconPath = path.join(__dirname, 'assets', 'icon.png');
   const windowOptions = {
-    width: 1200,
+    width: 1300,
     height: 800,
     resizable: true,
-    minWidth: 900,
+    minWidth: 1200,
     minHeight: 600,
     webPreferences: {
       nodeIntegration: true,
@@ -1379,8 +1389,58 @@ ipcMain.handle('get-settings', () => {
     socks5AuthUsername,
     socks5AuthPassword,
     systemProxyEnabledByApp,
-    systemProxyServiceName
+    systemProxyServiceName,
+    workspaces,
+    activeWorkspaceId
   };
+});
+
+ipcMain.handle('get-workspaces', () => {
+  return {
+    success: true,
+    workspaces,
+    activeWorkspaceId
+  };
+});
+
+ipcMain.handle('save-workspaces', (event, payload) => {
+  try {
+    const incoming = payload && Array.isArray(payload.workspaces) ? payload.workspaces : null;
+    if (!incoming) {
+      return { success: false, error: 'workspaces must be an array' };
+    }
+
+    const sanitized = incoming
+      .filter((ws) => ws && typeof ws.id === 'string' && typeof ws.name === 'string')
+      .map((ws) => ({
+        id: ws.id,
+        name: String(ws.name).slice(0, 64),
+        resolver: typeof ws.resolver === 'string' && ws.resolver ? ws.resolver : RESOLVER,
+        domain: typeof ws.domain === 'string' && ws.domain ? ws.domain : DOMAIN,
+        proxyBypassList: Array.isArray(ws.proxyBypassList)
+          ? ws.proxyBypassList.map((x) => String(x)).filter(Boolean)
+          : proxyBypassList
+      }));
+
+    let nextActiveId =
+      typeof payload.activeWorkspaceId === 'string' ? payload.activeWorkspaceId : activeWorkspaceId;
+    if (!nextActiveId || !sanitized.some((ws) => ws.id === nextActiveId)) {
+      nextActiveId = sanitized[0] ? sanitized[0].id : null;
+    }
+
+    workspaces = sanitized;
+    activeWorkspaceId = nextActiveId;
+    saveSettings({ workspaces, activeWorkspaceId });
+
+    return {
+      success: true,
+      workspaces,
+      activeWorkspaceId
+    };
+  } catch (err) {
+    console.error('Failed to save workspaces:', err);
+    return { success: false, error: err?.message || String(err) };
+  }
 });
 
 ipcMain.handle('set-resolver', (event, payload) => {

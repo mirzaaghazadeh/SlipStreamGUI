@@ -12,8 +12,10 @@
 - **Download & install** the app from the Releases page
 - **Set your server** (`Domain`) and **DNS Resolver** (if needed)
 - **DNS Checker (optional)**: run it, and click **"Use"** on any **OK** row to set your `DNS Resolver`
+- **Save as Preset**: save your configuration as a named preset for quick switching later
 - **Start VPN** with the **"Start VPN"** button and make sure statuses show **Running**
 - **Verify** with **"Test Proxy Connection"** and check Logs if needed
+- **Switch theme**: toggle between light and dark mode with the theme button in the header
 - **Optional**: Share your VPN over Wi‑Fi to your phone using the built-in HTTP proxy (`8080`)
 
 ---
@@ -148,6 +150,25 @@ To disable later: set Proxy back to **None**.
 - This only works while both devices are on the same network
 - If your PC IP changes, update the phone proxy settings
 - Some apps may ignore system proxy settings and need per-app configuration
+
+---
+
+## 🎨 New: Redesigned Interface
+
+The app features a modern, professional redesign:
+
+- **Light & Dark Theme**: switch between light and dark mode using the theme toggle button in the header. Your preference is saved automatically.
+- **Presets (Workspaces)**: save multiple configurations (resolver, domain, bypass list) as named presets. Quickly switch between them with a single click. Create, rename, and delete presets from the preset bar above the action buttons.
+- **Polished UI**: sidebar-style layout, status cards with animated indicators, SVG icons on buttons, and smooth transitions throughout.
+
+### Using Presets
+
+1. Click the **"+"** button in the Presets bar
+2. Enter a name for your preset (e.g., "Home", "Work", "Cafe")
+3. The current settings (resolver, domain, bypass list) are saved to the preset
+4. Click any preset tab to switch configurations instantly
+5. Use the pencil icon to rename or the trash icon to delete the active preset
+6. Changes to settings are auto-saved to the active preset
 
 ---
 

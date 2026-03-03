@@ -1,327 +1,594 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SlipStream GUI</title>
     <style>
+        /* ===================== THEME VARIABLES ===================== */
+        :root,
+        [data-theme="light"] {
+            --bg-primary: #f5f7fa;
+            --bg-secondary: #ffffff;
+            --bg-card: #f8f9fb;
+            --bg-card-hover: #f0f2f5;
+            --bg-input: #f0f2f5;
+            --bg-elevated: #e8ecf1;
+            --border-color: rgba(0, 0, 0, 0.06);
+            --border-light: rgba(0, 0, 0, 0.1);
+            --text-primary: #111827;
+            --text-secondary: #4b5563;
+            --text-muted: #9ca3af;
+            --accent: #6366f1;
+            --accent-light: #4f46e5;
+            --accent-glow: rgba(99, 102, 241, 0.1);
+            --accent-glow-strong: rgba(99, 102, 241, 0.2);
+            --success: #16a34a;
+            --success-glow: rgba(22, 163, 74, 0.15);
+            --danger: #dc2626;
+            --danger-glow: rgba(220, 38, 38, 0.12);
+            --warning: #d97706;
+            --info: #2563eb;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.04);
+            --shadow-lg: 0 4px 24px rgba(0, 0, 0, 0.1);
+            --modal-backdrop: rgba(0, 0, 0, 0.3);
+            --log-bg: #1a1d27;
+            --log-text: #c9d1d9;
+            --log-border: rgba(255, 255, 255, 0.06);
+            --scrollbar-thumb: rgba(0, 0, 0, 0.12);
+            --toggle-bg: #d1d5db;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #111827;
+            --bg-card: #1a2035;
+            --bg-card-hover: #1f2847;
+            --bg-input: #0f1629;
+            --bg-elevated: #232d47;
+            --border-color: rgba(255, 255, 255, 0.06);
+            --border-light: rgba(255, 255, 255, 0.1);
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent: #6366f1;
+            --accent-light: #818cf8;
+            --accent-glow: rgba(99, 102, 241, 0.15);
+            --accent-glow-strong: rgba(99, 102, 241, 0.3);
+            --success: #22c55e;
+            --success-glow: rgba(34, 197, 94, 0.2);
+            --danger: #ef4444;
+            --danger-glow: rgba(239, 68, 68, 0.2);
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.4);
+            --modal-backdrop: rgba(0, 0, 0, 0.7);
+            --log-bg: #0d1117;
+            --log-text: #c9d1d9;
+            --log-border: rgba(255, 255, 255, 0.06);
+            --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+            --toggle-bg: #374151;
+        }
+
+        :root {
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            --transition: 0.2s ease;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        input, textarea, .log, .log-entry, .dns-table td, .tech-section pre, .modal-section code {
+            user-select: text;
+            -webkit-user-select: text;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #333;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
             display: flex;
-            justify-content: center;
-            align-items: center;
             min-height: 100vh;
-            padding: 20px;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+            transition: background 0.3s ease, color 0.3s ease;
         }
 
+        /* ===================== LAYOUT ===================== */
         .app-container {
             display: flex;
-            gap: 20px;
             width: 100%;
-            max-width: 1200px;
-            height: 90vh;
+            height: 100vh;
         }
 
         .main-panel {
-            background: white;
-            border-radius: 20px;
-            padding: 18px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            flex: 1;
+            width: 470px;
+            min-width: 430px;
+            max-width: 510px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
-            min-width: 400px;
             overflow-y: auto;
-            max-height: 90vh;
+            overflow-x: hidden;
+            transition: background 0.3s ease, border-color 0.3s ease;
+        }
+
+        .main-panel::-webkit-scrollbar { width: 6px; }
+        .main-panel::-webkit-scrollbar-track { background: transparent; }
+        .main-panel::-webkit-scrollbar-thumb {
+            background: var(--scrollbar-thumb);
+            border-radius: 3px;
         }
 
         .logs-panel {
-            background: #1e1e1e;
-            border-radius: 20px;
-            padding: 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             flex: 1;
+            background: var(--log-bg);
             display: flex;
             flex-direction: column;
-            min-width: 400px;
-            color: #d4d4d4;
+            min-width: 0;
+            transition: background 0.3s ease;
         }
 
+        /* ===================== HEADER ===================== */
         .header {
-            text-align: center;
-            margin-bottom: 10px;
-            position: relative;
+            padding: 20px 24px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+            transition: border-color 0.3s ease;
         }
 
-        .header h1 {
-            color: #667eea;
-            font-size: 22px;
-            margin-bottom: 3px;
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
-        .header p {
-            color: #666;
-            font-size: 11px;
+        .header-logo {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent), #a855f7);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            box-shadow: 0 0 20px var(--accent-glow);
+            flex-shrink: 0;
+        }
+
+        .header-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.3px;
         }
 
         .version-badge {
             display: inline-block;
-            background: #667eea;
-            color: white;
+            background: var(--accent-glow);
+            color: var(--accent);
             padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 10px;
+            border-radius: 6px;
+            font-size: 11px;
             font-weight: 600;
             margin-left: 8px;
-            vertical-align: middle;
+            letter-spacing: 0.3px;
         }
 
-        .help-btn {
-            position: absolute;
-            top: 0;
-            right: 0;
-            background: #f5f5f5;
-            border: none;
-            border-radius: 50%;
-            width: 32px;
-            height: 32px;
-            cursor: pointer;
-            font-size: 18px;
-            color: #667eea;
-            transition: all 0.3s;
+        [data-theme="dark"] .version-badge {
+            color: var(--accent-light);
         }
 
-        .help-btn:hover {
-            background: #e0e0e0;
-            transform: scale(1.1);
-        }
-
-        .dns-btn {
-            position: absolute;
-            top: 0;
-            right: 42px;
-            background: #f5f5f5;
-            border: none;
-            border-radius: 999px;
-            height: 32px;
-            padding: 0 12px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: 600;
-            color: #673ab7;
-            transition: all 0.3s;
-        }
-
-        .dns-btn:hover {
-            background: #e0e0e0;
-            transform: scale(1.04);
-        }
-
-        .github-btn {
-            position: absolute;
-            top: 0;
-            left: 0;
-            background: #f5f5f5;
-            border: none;
-            border-radius: 50%;
-            width: 32px;
-            height: 32px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s;
-            text-decoration: none;
-            color: #333;
-        }
-
-        .github-btn:hover {
-            background: #e0e0e0;
-            transform: scale(1.1);
-        }
-
-        .github-btn svg {
-            width: 18px;
-            height: 18px;
-            fill: #333;
-            transition: fill 0.3s;
-        }
-
-        .github-btn:hover svg {
-            fill: #667eea;
-        }
-
-        @keyframes githubPulse {
-            0% { transform: scale(1); box-shadow: 0 0 0 rgba(102, 126, 234, 0); }
-            35% { transform: scale(1.08); box-shadow: 0 0 0 10px rgba(102, 126, 234, 0.15); }
-            70% { transform: scale(1); box-shadow: 0 0 0 0 rgba(102, 126, 234, 0); }
-            100% { transform: scale(1); box-shadow: 0 0 0 rgba(102, 126, 234, 0); }
-        }
-
-        .github-btn.attention {
-            animation: githubPulse 0.9s ease-in-out 0s 4;
-        }
-
-        /* Tooltip */
-        .github-btn::after {
-            content: "Don't forget to Star it";
-            position: absolute;
-            left: 40px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: #333;
-            color: white;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 12px;
-            white-space: nowrap;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s;
-            z-index: 1000;
-        }
-
-        .github-btn:hover::after {
-            opacity: 1;
-        }
-
-        .status {
-            background: #f5f5f5;
-            border-radius: 10px;
-            padding: 12px;
-            margin-bottom: 10px;
-        }
-
-        .status-main {
-            text-align: center;
-            margin-bottom: 10px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #e0e0e0;
-        }
-
-        .status-main-text {
-            font-size: 15px;
-            font-weight: 600;
-            color: #333;
-            margin-top: 6px;
-        }
-
-        .status-indicator {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 8px;
-            background: #e0e0e0;
-            box-shadow: 0 0 0 3px rgba(224, 224, 224, 0.3);
-        }
-
-        .status-indicator.active {
-            background: #4caf50;
-            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.3);
-            animation: pulse 2s infinite;
-        }
-
-        .status-indicator.running {
-            background: #4caf50;
-        }
-
-        .status-indicator.stopped {
-            background: #f44336;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-
-        .status-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 6px;
-        }
-
-        .status-row:last-child {
-            margin-bottom: 0;
-        }
-
-        .status-label {
-            font-size: 13px;
-            color: #666;
-            font-weight: 500;
-        }
-
-        .status-value {
-            font-size: 13px;
-            color: #333;
-            font-weight: 600;
+        .header-actions {
             display: flex;
             align-items: center;
             gap: 6px;
         }
 
-        .settings {
-            background: #f9f9f9;
-            border-radius: 10px;
-            padding: 10px;
-            margin-bottom: 10px;
+        .header-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-light);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition);
+            font-size: 14px;
+            text-decoration: none;
         }
 
-        .settings-header {
-            font-size: 13px;
+        .header-btn:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            border-color: var(--border-light);
+        }
+
+        .header-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            width: 34px;
+            height: 34px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-light);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition);
+            font-size: 16px;
+            padding: 0;
+        }
+
+        .theme-toggle:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+        }
+
+        .theme-toggle .icon-sun,
+        .theme-toggle .icon-moon { display: none; }
+        [data-theme="light"] .theme-toggle .icon-moon { display: block; }
+        [data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+
+        .dns-btn {
+            height: 34px;
+            padding: 0 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-light);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 12px;
             font-weight: 600;
-            color: #333;
-            margin-bottom: 8px;
+            transition: all var(--transition);
+            white-space: nowrap;
         }
 
-        .form-group {
-            margin-bottom: 8px;
+        .dns-btn:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
         }
 
-        .form-group:last-child {
-            margin-bottom: 0;
+        /* ===================== STATUS CARD ===================== */
+        .status-card {
+            margin: 16px 16px 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            flex-shrink: 0;
+            box-shadow: var(--shadow);
+            transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
         }
+
+        .status-main {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .status-orb {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--bg-elevated);
+            border: 2px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            flex-shrink: 0;
+            transition: all 0.4s ease;
+        }
+
+        .status-orb-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            transition: all 0.4s ease;
+        }
+
+        .status-orb.active {
+            border-color: var(--success);
+            box-shadow: 0 0 20px var(--success-glow), 0 0 40px rgba(34, 197, 94, 0.08);
+        }
+
+        .status-orb.active .status-orb-dot {
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success);
+            animation: orbPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes orbPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.15); opacity: 0.8; }
+        }
+
+        .status-main-info { flex: 1; }
+
+        .status-main-text {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.3px;
+        }
+
+        .status-main-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: var(--bg-input);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            transition: background 0.3s ease, border-color 0.3s ease;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+
+        .status-dot.running {
+            background: var(--success);
+            box-shadow: 0 0 6px var(--success-glow);
+        }
+
+        .status-dot.stopped {
+            background: var(--danger);
+        }
+
+        .status-item-info { min-width: 0; }
+
+        .status-item-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .status-item-value {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .status-indicator { display: none; }
+
+        /* ===================== ACTION BUTTONS ===================== */
+        .actions-section {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .button {
+            width: 100%;
+            padding: 12px 16px;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            letter-spacing: 0.2px;
+        }
+
+        .button:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .button-start {
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            color: white;
+            box-shadow: 0 4px 16px var(--accent-glow);
+        }
+
+        .button-start:hover:not(:disabled) {
+            box-shadow: 0 6px 24px var(--accent-glow-strong);
+            transform: translateY(-1px);
+        }
+
+        .button-start:active:not(:disabled) { transform: translateY(0); }
+
+        .button-stop {
+            background: rgba(220, 38, 38, 0.08);
+            color: var(--danger);
+            border: 1px solid rgba(220, 38, 38, 0.15);
+        }
+
+        .button-stop:hover:not(:disabled) {
+            background: rgba(220, 38, 38, 0.14);
+        }
+
+        .button-test {
+            background: rgba(37, 99, 235, 0.07);
+            color: var(--info);
+            border: 1px solid rgba(37, 99, 235, 0.12);
+        }
+
+        .button-test:hover:not(:disabled) {
+            background: rgba(37, 99, 235, 0.13);
+        }
+
+        [data-theme="dark"] .button-stop {
+            background: rgba(239, 68, 68, 0.12);
+            border-color: rgba(239, 68, 68, 0.2);
+        }
+        [data-theme="dark"] .button-stop:hover:not(:disabled) {
+            background: rgba(239, 68, 68, 0.2);
+        }
+        [data-theme="dark"] .button-test {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: rgba(59, 130, 246, 0.15);
+        }
+        [data-theme="dark"] .button-test:hover:not(:disabled) {
+            background: rgba(59, 130, 246, 0.18);
+        }
+
+        /* ===================== SETTINGS ===================== */
+        .settings-section {
+            padding: 0 16px 16px;
+            flex: 1;
+        }
+
+        .settings-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 12px 0 10px;
+        }
+
+        .settings-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .settings-item {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            transition: border-color 0.3s ease;
+        }
+
+        .settings-item:last-child { border-bottom: none; }
+
+        .settings-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .settings-item-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .settings-item-desc {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+
+        .form-group { margin-bottom: 0; }
 
         .form-label {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 12px;
-            color: #666;
-            margin-bottom: 6px;
+            font-size: 13px;
+            color: var(--text-primary);
+            margin-bottom: 8px;
             font-weight: 500;
         }
 
         .form-input {
             width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
+            padding: 10px 14px;
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-sm);
             font-size: 13px;
-            transition: border-color 0.3s;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            transition: all var(--transition);
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
         }
 
         .form-input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
         }
 
-        /* Toggle Switch Styles */
+        .form-input::placeholder { color: var(--text-muted); }
+
+        textarea.form-input {
+            min-height: 80px;
+            resize: vertical;
+            line-height: 1.5;
+        }
+
+        .settings-help {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 6px;
+            line-height: 1.4;
+        }
+
+        .settings-note {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 6px;
+            line-height: 1.4;
+        }
+
+        /* Toggle Switch */
         .toggle-container {
             position: relative;
             display: inline-block;
-            width: 50px;
-            height: 26px;
-            margin: 0;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
         }
 
         .toggle-container input[type="checkbox"] {
@@ -333,106 +600,64 @@
         .toggle-slider {
             position: absolute;
             cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #667eea;
-            border-radius: 26px;
-            transition: .4s;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: var(--toggle-bg);
+            border-radius: 24px;
+            transition: all 0.3s;
         }
 
         .toggle-slider:before {
             position: absolute;
             content: '';
-            height: 20px;
-            width: 20px;
+            height: 18px;
+            width: 18px;
             left: 3px;
             bottom: 3px;
             background-color: white;
             border-radius: 50%;
-            transition: .4s;
-            transform: translateX(24px);
+            transition: all 0.3s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
         }
 
         .toggle-container input:checked + .toggle-slider {
-            background-color: #667eea;
+            background-color: var(--accent);
         }
 
-        .toggle-container input:not(:checked) + .toggle-slider {
-            background-color: #ccc;
+        .toggle-container input:checked + .toggle-slider:before {
+            transform: translateX(20px);
         }
 
         .toggle-container input:not(:checked) + .toggle-slider:before {
             transform: translateX(0);
         }
 
-        .button {
-            width: 100%;
-            padding: 10px;
-            border: none;
-            border-radius: 10px;
+        .proxy-auth-section { display: none !important; }
+
+        /* ===================== LOGS PANEL ===================== */
+        .logs-header {
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--log-border);
+            background: var(--log-bg);
+            flex-shrink: 0;
+            color: #c9d1d9;
+        }
+
+        .logs-header-title {
             font-size: 14px;
             font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-bottom: 6px;
-        }
-
-        .button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .button-start {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .button-start:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .button-stop {
-            background: #f44336;
-            color: white;
-        }
-
-        .button-stop:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(244, 67, 54, 0.4);
-        }
-
-        .info {
-            background: #e3f2fd;
-            border-left: 4px solid #2196f3;
-            padding: 10px;
-            border-radius: 5px;
-            margin-top: 8px;
-            font-size: 11px;
-            color: #1976d2;
-        }
-
-        .info strong {
-            display: block;
-            margin-bottom: 5px;
-        }
-
-        .logs-header {
-            font-size: 15px;
-            font-weight: 600;
-            color: #fff;
-            margin-bottom: 10px;
+            color: #e6edf3;
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            gap: 8px;
         }
 
         .logs-header-controls {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 12px;
         }
 
         .logs-verbose-toggle {
@@ -440,386 +665,121 @@
             align-items: center;
             gap: 8px;
             font-size: 12px;
-            color: #d4d4d4;
+            color: #8b949e;
         }
 
         .logs-verbose-toggle label {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
             cursor: pointer;
         }
 
-        .logs-verbose-toggle .toggle-container {
-            margin: 0;
+        /* Override toggle colors inside dark logs panel */
+        .logs-verbose-toggle .toggle-slider {
+            background-color: #374151;
+        }
+        .logs-verbose-toggle input:checked + .toggle-slider {
+            background-color: var(--accent);
         }
 
         .logs-clear {
-            background: #333;
-            border: 1px solid #555;
-            color: #fff;
-            padding: 5px 10px;
-            border-radius: 5px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #8b949e;
+            padding: 6px 14px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
             font-size: 12px;
+            font-weight: 500;
+            transition: all var(--transition);
         }
 
         .logs-clear:hover {
-            background: #444;
+            background: rgba(255,255,255,0.1);
+            color: #e6edf3;
         }
 
         .log {
-            background: #1e1e1e;
-            color: #d4d4d4;
-            border-radius: 10px;
-            padding: 12px;
-            font-family: 'Courier New', monospace;
-            font-size: 11px;
             flex: 1;
+            padding: 16px 24px;
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.7;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
+            color: var(--log-text);
+            background: var(--log-bg);
         }
 
-        /* Compact helper text in settings */
-        .settings-help {
-            font-size: 10px;
-            color: #666;
-            margin-top: 3px;
-            line-height: 1.35;
-        }
-
-        .settings-note {
-            font-size: 10px;
-            color: #666;
-            margin-top: 4px;
-            line-height: 1.35;
-        }
-
-        /* We do NOT support HTTP-proxy auth; keep this hidden */
-        .proxy-auth-section {
-            display: none !important;
+        .log::-webkit-scrollbar { width: 6px; }
+        .log::-webkit-scrollbar-track { background: transparent; }
+        .log::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.08);
+            border-radius: 3px;
         }
 
         .log-entry {
-            margin-bottom: 5px;
-            line-height: 1.4;
+            margin-bottom: 2px;
+            padding: 3px 0;
             word-wrap: break-word;
         }
 
-        .log-entry.error {
-            color: #f44336;
-        }
-
-        .log-entry.success {
-            color: #4caf50;
-        }
+        .log-entry.error { color: #f85149; }
+        .log-entry.success { color: #3fb950; }
 
         .log-empty {
-            color: #666;
+            color: #484f58;
             text-align: center;
-            margin-top: 50%;
+            margin: auto;
             font-style: italic;
-        }
-
-        .intro-modal {
-            display: flex;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 2000;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .intro-modal.hidden {
-            display: none;
-        }
-
-        .intro-modal-content {
-            background: white;
-            border-radius: 20px;
-            padding: 0;
-            max-width: 60%;
-            max-height: 70%;
-            position: relative;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .intro-modal-image {
-            max-width: 100%;
-            max-height: 60vh;
-            border-radius: 20px 20px 0 0;
-            object-fit: contain;
-        }
-
-        .intro-modal-button {
-            width: 100%;
-            padding: 15px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 0 0 20px 20px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .intro-modal-button:hover {
-            background: #5568d3;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            /* Keep Help/About above all UI/tooltips/intro overlays */
-            z-index: 3000;
-            justify-content: center;
-            align-items: center;
-            /* If viewport is short, allow the overlay itself to scroll */
-            padding: 20px;
-            overflow: auto;
-        }
-
-        .modal.show {
-            display: flex;
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: 15px;
-            /* Responsive sizing so the modal never "breaks" layout */
-            width: min(900px, calc(100vw - 40px));
-            max-width: 900px;
-            padding: clamp(16px, 3vw, 30px);
-            max-height: min(86vh, 900px);
-            overflow: auto;
-            -webkit-overflow-scrolling: touch;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            /* Keep title + close accessible while scrolling */
-            position: sticky;
-            top: 0;
-            background: white;
-            z-index: 10;
-            padding: 6px 0 12px;
-            margin-bottom: 18px;
-            border-bottom: 1px solid #eee;
-        }
-
-        /* DNS Checker modal: make header flush to top */
-        #dnsCheckerModal .modal-content {
-            padding: 0;
-        }
-
-        #dnsCheckerModal .modal-header {
-            padding: 14px 18px;
-            margin-bottom: 0;
-            min-height: 56px;
-            border-top-left-radius: 15px;
-            border-top-right-radius: 15px;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.06);
-        }
-
-        #dnsCheckerModal .dns-checker {
-            margin-top: 0;
-            border: none;
-            border-radius: 0 0 15px 15px;
-            background: transparent;
-            padding: 18px;
-        }
-
-        .modal-title {
-            font-size: clamp(18px, 2.2vw, 24px);
-            font-weight: 600;
-            color: #333;
-        }
-
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 28px;
-            color: #999;
-            cursor: pointer;
-            line-height: 1;
-        }
-
-        .modal-close:hover {
-            color: #333;
-        }
-
-        .modal-section {
-            margin-bottom: 25px;
-        }
-
-        .modal-section:last-child {
-            margin-bottom: 0;
-        }
-
-        .modal-section h3 {
-            font-size: 16px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 10px;
-        }
-
-        .modal-section h4 {
-            font-size: 14px;
-            font-weight: 600;
-            color: #333;
-            margin: 12px 0 8px;
-        }
-
-        .modal-section p {
-            font-size: 14px;
-            color: #666;
-            line-height: 1.6;
-            margin-bottom: 8px;
-        }
-
-        .modal-section ul,
-        .modal-section ol {
-            font-size: 14px;
-            color: #666;
-            line-height: 1.8;
-            margin: 8px 0 10px;
-            padding-left: 22px;
-        }
-
-        .modal-section li {
-            margin: 6px 0;
-        }
-
-        .modal-section li:last-child {
-            margin-bottom: 0;
-        }
-
-        .modal-section code {
-            background: #f5f5f5;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             font-size: 13px;
         }
 
-        .tech-button {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-top: 10px;
-            width: 100%;
-        }
-
-        .tech-button:hover {
-            background: #5568d3;
-            transform: translateY(-2px);
-        }
-
-        .tech-section {
-            display: none;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 2px solid #e0e0e0;
-        }
-
-        .tech-section.show {
-            display: block;
-        }
-
-        .tech-section code {
-            background: #f5f5f5;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-        }
-
-        .tech-section pre {
-            background: #1e1e1e;
-            color: #d4d4d4;
-            padding: 15px;
-            border-radius: 8px;
-            overflow-x: auto;
-            font-size: 12px;
-            line-height: 1.6;
-            margin: 10px 0;
-        }
-
+        /* ===================== UPDATE NOTIFICATION ===================== */
         .update-notification {
-            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
-            color: white;
+            background: rgba(22, 163, 74, 0.08);
+            border: 1px solid rgba(22, 163, 74, 0.18);
+            color: var(--text-primary);
             padding: 12px 16px;
-            border-radius: 10px;
-            margin-bottom: 15px;
+            border-radius: var(--radius-md);
+            margin: 16px 16px 0;
             display: none;
             align-items: center;
             justify-content: space-between;
-            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
             animation: slideDown 0.3s ease-out;
+            flex-shrink: 0;
         }
 
-        .update-notification.show {
-            display: flex;
-        }
+        .update-notification.show { display: flex; }
 
         @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .update-notification-content {
             flex: 1;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
         }
 
-        .update-notification-icon {
-            font-size: 20px;
-        }
-
-        .update-notification-text {
-            flex: 1;
-        }
+        .update-notification-icon { font-size: 18px; }
+        .update-notification-text { flex: 1; }
 
         .update-notification-title {
             font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 2px;
+            font-size: 13px;
+            color: var(--success);
         }
 
         .update-notification-subtitle {
             font-size: 12px;
-            opacity: 0.9;
+            color: var(--text-secondary);
+            margin-top: 1px;
         }
 
         .update-notification-actions {
@@ -829,27 +789,26 @@
         }
 
         .update-btn {
-            background: white;
-            color: #4caf50;
+            background: var(--success);
+            color: white;
             border: none;
             padding: 6px 14px;
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             font-size: 12px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all var(--transition);
         }
 
         .update-btn:hover {
-            background: #f5f5f5;
+            opacity: 0.9;
             transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
 
         .update-dismiss {
             background: transparent;
             border: none;
-            color: white;
+            color: var(--text-muted);
             font-size: 18px;
             cursor: pointer;
             padding: 0;
@@ -859,48 +818,249 @@
             align-items: center;
             justify-content: center;
             border-radius: 50%;
-            transition: all 0.3s;
+            transition: all var(--transition);
         }
 
         .update-dismiss:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: var(--bg-elevated);
+            color: var(--text-primary);
         }
 
-        .dns-checker {
-            margin-top: 16px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 16px;
+        /* ===================== INFO BOX ===================== */
+        .info {
+            background: rgba(37, 99, 235, 0.06);
+            border-left: 3px solid var(--info);
+            padding: 10px 12px;
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+            margin: 12px 16px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            line-height: 1.5;
         }
+
+        .info strong {
+            display: block;
+            margin-bottom: 4px;
+            color: var(--info);
+        }
+
+        /* ===================== MODALS ===================== */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: var(--modal-backdrop);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 3000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow: auto;
+        }
+
+        .modal.show { display: flex; }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-xl);
+            width: min(900px, calc(100vw - 40px));
+            max-width: 900px;
+            padding: clamp(20px, 3vw, 32px);
+            max-height: min(86vh, 900px);
+            overflow: auto;
+            box-shadow: var(--shadow-lg);
+            transition: background 0.3s ease, border-color 0.3s ease;
+        }
+
+        .modal-content::-webkit-scrollbar { width: 6px; }
+        .modal-content::-webkit-scrollbar-track { background: transparent; }
+        .modal-content::-webkit-scrollbar-thumb {
+            background: var(--scrollbar-thumb);
+            border-radius: 3px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            background: var(--bg-secondary);
+            z-index: 10;
+            padding: 4px 0 16px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-title {
+            font-size: clamp(18px, 2.2vw, 22px);
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-sm);
+            font-size: 18px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition);
+        }
+
+        .modal-close:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+        }
+
+        .modal-section { margin-bottom: 28px; }
+        .modal-section:last-child { margin-bottom: 0; }
+
+        .modal-section h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+
+        .modal-section h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 14px 0 8px;
+        }
+
+        .modal-section p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 8px;
+        }
+
+        .modal-section ul,
+        .modal-section ol {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.8;
+            margin: 8px 0 10px;
+            padding-left: 22px;
+        }
+
+        .modal-section li { margin: 6px 0; }
+
+        .modal-section code {
+            background: var(--bg-card);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 13px;
+            color: var(--accent);
+            border: 1px solid var(--border-color);
+        }
+
+        [data-theme="dark"] .modal-section code {
+            color: var(--accent-light);
+        }
+
+        .tech-button {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            color: var(--text-primary);
+            padding: 12px 20px;
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition);
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .tech-button:hover {
+            background: var(--bg-elevated);
+        }
+
+        .tech-section {
+            display: none;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .tech-section.show { display: block; }
+
+        .tech-section pre {
+            background: #1a1d27;
+            color: #c9d1d9;
+            padding: 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(255,255,255,0.06);
+            overflow-x: auto;
+            font-size: 12px;
+            line-height: 1.7;
+            margin: 10px 0;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+        }
+
+        /* ===================== DNS CHECKER MODAL ===================== */
+        #dnsCheckerModal .modal-content { padding: 0; }
+
+        #dnsCheckerModal .modal-header {
+            padding: 16px 24px;
+            margin-bottom: 0;
+            border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        #dnsCheckerModal .dns-checker {
+            margin-top: 0;
+            border: none;
+            border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+            background: transparent;
+            padding: 20px 24px 24px;
+        }
+
+        .dns-checker { margin-top: 16px; }
 
         .dns-warning {
-            margin-top: 8px;
-            padding: 10px 12px;
-            border-radius: 10px;
-            background: rgba(255, 193, 7, 0.12);
-            border: 1px solid rgba(255, 193, 7, 0.25);
-            color: #c62828;
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            background: rgba(220, 38, 38, 0.06);
+            border: 1px solid rgba(220, 38, 38, 0.12);
+            color: var(--danger);
             font-size: 13px;
-            line-height: 1.4;
+            line-height: 1.5;
         }
 
-        /* Keep the VPN warning readable while scrolling inside the modal */
         #dnsCheckerModal .dns-warning {
-            background: #fff5f5;
-            border: 1px solid rgba(198, 40, 40, 0.28);
-            /* normal flow: scrolls with content (no "freeze") */
             position: static;
             box-shadow: none;
         }
 
         .dns-table-wrap {
-            margin-top: 12px;
-            max-height: 220px;
+            margin-top: 16px;
+            max-height: 260px;
             overflow: auto;
-            border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            background: #fff;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+        }
+
+        .dns-table-wrap::-webkit-scrollbar { width: 6px; }
+        .dns-table-wrap::-webkit-scrollbar-track { background: transparent; }
+        .dns-table-wrap::-webkit-scrollbar-thumb {
+            background: var(--scrollbar-thumb);
+            border-radius: 3px;
         }
 
         .dns-table {
@@ -911,207 +1071,581 @@
 
         .dns-table th,
         .dns-table td {
-            padding: 10px 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-color);
             text-align: left;
             white-space: nowrap;
+            color: var(--text-secondary);
         }
 
         .dns-table th {
             position: sticky;
             top: 0;
-            background: #f5f5f5;
+            background: var(--bg-elevated);
             z-index: 1;
             font-weight: 600;
+            color: var(--text-primary);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .dns-muted {
-            opacity: 0.8;
-        }
+        .dns-table tr:last-child td { border-bottom: none; }
+
+        .dns-muted { color: var(--text-muted); }
 
         .dns-progress {
             white-space: nowrap;
+            color: var(--text-secondary);
         }
 
-        .dns-status-ok { color: #4caf50; }
-        .dns-status-warn { color: #ff9800; }
-        .dns-status-bad { color: #f44336; }
+        .dns-status-ok { color: var(--success); }
+        .dns-status-warn { color: var(--warning); }
+        .dns-status-bad { color: var(--danger); }
 
         .dns-use-btn {
-            padding: 6px 10px;
-            border-radius: 8px;
+            padding: 5px 12px;
+            border-radius: var(--radius-sm);
             border: none;
-            background: #673ab7;
+            background: var(--accent);
             color: white;
             font-size: 12px;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+            transition: all var(--transition);
         }
 
         .dns-use-btn:hover:not(:disabled) {
+            opacity: 0.9;
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(103, 58, 183, 0.25);
         }
 
         .dns-use-btn:disabled {
-            background: #cfcfcf;
-            color: #666;
+            background: var(--bg-elevated);
+            color: var(--text-muted);
             cursor: not-allowed;
-            opacity: 0.85;
-            box-shadow: none;
+            opacity: 0.6;
             transform: none;
         }
 
-        textarea.form-input {
-            min-height: 120px;
-            resize: vertical;
-            line-height: 1.35;
+        /* ===================== INTRO MODAL ===================== */
+        .intro-modal {
+            display: flex;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            z-index: 4000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .intro-modal.hidden { display: none; }
+
+        .intro-modal-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-xl);
+            padding: 0;
+            max-width: 60%;
+            max-height: 75%;
+            position: relative;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .intro-modal-image {
+            max-width: 100%;
+            max-height: 60vh;
+            border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+            object-fit: contain;
+        }
+
+        .intro-modal-button {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            color: white;
+            border: none;
+            border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+
+        .intro-modal-button:hover { opacity: 0.92; }
+
+        /* ===================== GITHUB STAR MODAL ===================== */
+        #githubStarModal .modal-content {
+            max-width: 420px;
+            text-align: center;
+            padding: 28px 24px;
+        }
+
+        #githubStarModal .modal-header {
+            position: static;
+            border-bottom: none;
+            margin-bottom: 8px;
+            justify-content: center;
+            padding-bottom: 0;
+        }
+
+        #githubStarModal .modal-title {
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .github-star-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 18px;
+            line-height: 1.6;
+        }
+
+        .github-star-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .github-star-actions .button {
+            width: auto;
+            min-width: 160px;
+        }
+
+        @keyframes githubPulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 rgba(99,102,241,0); }
+            35% { transform: scale(1.06); box-shadow: 0 0 0 8px rgba(99,102,241,0.1); }
+            70% { transform: scale(1); box-shadow: 0 0 0 0 rgba(99,102,241,0); }
+            100% { transform: scale(1); }
+        }
+
+        .github-btn.attention {
+            animation: githubPulse 0.9s ease-in-out 0s 4;
+        }
+
+        /* ===================== INLINE DIALOG ===================== */
+        .inline-dialog {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: var(--modal-backdrop);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            z-index: 5000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .inline-dialog.show { display: flex; }
+
+        .inline-dialog-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            width: min(360px, calc(100vw - 40px));
+            box-shadow: var(--shadow-lg);
+        }
+
+        .inline-dialog-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 14px;
+        }
+
+        .inline-dialog-input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            outline: none;
+            margin-bottom: 16px;
+            user-select: text;
+            -webkit-user-select: text;
+        }
+
+        .inline-dialog-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .inline-dialog-msg {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 18px;
+            line-height: 1.5;
+        }
+
+        .inline-dialog-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .inline-dialog-btn {
+            padding: 8px 18px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--transition);
+            border: 1px solid var(--border-light);
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        .inline-dialog-btn:hover {
+            background: var(--bg-elevated);
+        }
+
+        .inline-dialog-btn.primary {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .inline-dialog-btn.primary:hover {
+            opacity: 0.9;
+        }
+
+        .inline-dialog-btn.danger {
+            background: var(--danger);
+            color: white;
+            border-color: var(--danger);
+        }
+
+        .inline-dialog-btn.danger:hover {
+            opacity: 0.9;
+        }
+
+        /* ===================== WORKSPACES ===================== */
+        .workspaces-bar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 0 16px;
+            margin-top: 12px;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+
+        .workspaces-bar-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-right: 4px;
+        }
+
+        .ws-tab {
+            padding: 6px 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-light);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition);
+            white-space: nowrap;
+        }
+
+        .ws-tab:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+        }
+
+        .ws-tab.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .ws-tab-add {
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border-radius: var(--radius-sm);
+            border: 1px dashed var(--border-light);
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition);
+            flex-shrink: 0;
+        }
+
+        .ws-tab-add:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: var(--accent-glow);
+        }
+
+        .ws-actions {
+            display: flex;
+            gap: 4px;
+            margin-left: auto;
+        }
+
+        .ws-action-btn {
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-light);
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition);
+        }
+
+        .ws-action-btn:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+        }
+
+        .ws-action-btn.danger:hover {
+            background: var(--danger-glow);
+            color: var(--danger);
+            border-color: rgba(220, 38, 38, 0.2);
+        }
+
+        /* ===================== RESPONSIVE ===================== */
+        @media (max-width: 900px) {
+            .app-container { flex-direction: column; }
+            .main-panel {
+                width: 100%;
+                max-width: none;
+                min-width: 0;
+                max-height: 55vh;
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+            }
+            .logs-panel { min-height: 300px; }
         }
     </style>
 </head>
 <body>
     <div class="app-container">
-        <!-- Main Panel -->
+        <!-- ==================== MAIN PANEL ==================== -->
         <div class="main-panel">
+            <!-- Header -->
             <div class="header">
-                <a href="#" onclick="openGitHub(); return false;" class="github-btn" title="Don't forget to Star it">
-                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                    </svg>
-                </a>
-                <button class="dns-btn" onclick="showDnsChecker()" title="DNS Checker">DNS Checker</button>
-                <button class="help-btn" onclick="showHelp()" title="Help & About">?</button>
-                <h1>🔒 SlipStream GUI</h1>
-                <div style="margin-top: 6px;">
-                    <span class="version-badge" id="versionBadge">v1.0.5</span>
+                <div class="header-brand">
+                    <div class="header-logo">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="header-title">SlipStream GUI<span class="version-badge" id="versionBadge">v1.0.5</span></div>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="dns-btn" onclick="showDnsChecker()" title="DNS Checker">DNS Check</button>
+                    <a href="#" onclick="openGitHub(); return false;" class="header-btn github-btn" title="GitHub" id="githubBtn">
+                        <svg viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                    </a>
+                    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+                        <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                        <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    </button>
+                    <button class="header-btn" onclick="showHelp()" title="Help & About">?</button>
                 </div>
             </div>
 
             <!-- Update Notification -->
             <div class="update-notification" id="updateNotification">
                 <div class="update-notification-content">
-                    <span class="update-notification-icon">🆕</span>
+                    <span class="update-notification-icon">&#9650;</span>
                     <div class="update-notification-text">
-                        <div class="update-notification-title">New Version Available!</div>
+                        <div class="update-notification-title">Update Available</div>
                         <div class="update-notification-subtitle" id="updateNotificationText">Version <span id="latestVersionText"></span> is now available</div>
                     </div>
                 </div>
                 <div class="update-notification-actions">
                     <button class="update-btn" id="updateDownloadBtn" onclick="downloadUpdate()">Download</button>
-                    <button class="update-dismiss" onclick="dismissUpdate()" title="Dismiss">×</button>
+                    <button class="update-dismiss" onclick="dismissUpdate()" title="Dismiss">&times;</button>
                 </div>
             </div>
 
-            <div class="status">
+            <!-- Status Card -->
+            <div class="status-card">
+                <span class="status-indicator" id="statusIndicator" style="display:none;"></span>
+
                 <div class="status-main">
-                    <span class="status-indicator" id="statusIndicator"></span>
-                    <div class="status-main-text" id="statusText">Disconnected</div>
+                    <div class="status-orb" id="statusOrb">
+                        <div class="status-orb-dot"></div>
+                    </div>
+                    <div class="status-main-info">
+                        <div class="status-main-text" id="statusText">Disconnected</div>
+                        <div class="status-main-sub">VPN Tunnel Status</div>
+                    </div>
                 </div>
-                <div class="status-row">
-                    <span class="status-label">SlipStream Client:</span>
-                    <span class="status-value">
-                        <span class="status-indicator" id="slipstreamIndicator"></span>
-                        <span id="slipstreamStatus">Stopped</span>
-                    </span>
-                </div>
-                <div class="status-row">
-                    <span class="status-label">HTTP Proxy:</span>
-                    <span class="status-value">
-                        <span class="status-indicator" id="proxyIndicator"></span>
-                        <span id="proxyStatus">Stopped</span>
-                    </span>
-                </div>
-                <div class="status-row">
-                    <span class="status-label">System Proxy:</span>
-                    <span class="status-value" id="systemProxyStatus">Not Configured (Optional)</span>
+
+                <div class="status-grid">
+                    <div class="status-item">
+                        <span class="status-dot" id="slipstreamIndicator"></span>
+                        <div class="status-item-info">
+                            <div class="status-item-label">Client</div>
+                            <div class="status-item-value" id="slipstreamStatus">Stopped</div>
+                        </div>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-dot" id="proxyIndicator"></span>
+                        <div class="status-item-info">
+                            <div class="status-item-label">HTTP Proxy</div>
+                            <div class="status-item-value" id="proxyStatus">Stopped</div>
+                        </div>
+                    </div>
+                    <div class="status-item" style="grid-column: span 2;">
+                        <span class="status-dot" id="systemProxyIndicator"></span>
+                        <div class="status-item-info">
+                            <div class="status-item-label">System Proxy</div>
+                            <div class="status-item-value" id="systemProxyStatus">Not Configured</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="settings">
-                <div class="settings-header">⚙️ Settings</div>
-                <div class="form-group">
-                    <label class="form-label">
-                        <span>Configure System Proxy</span>
-                        <label class="toggle-container">
-                            <input type="checkbox" id="systemProxyToggle" checked onchange="toggleSystemProxy()">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </label>
-                    <div class="settings-help">
-                        Automatically configure system proxy settings to route all traffic through VPN
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Proxy Bypass List (Split Tunneling)</label>
-                    <textarea class="form-input" id="proxyBypassInput" rows="3" placeholder="Enter domains or IPs to exclude from proxy (one per line)&#10;e.g. *.google.com&#10;192.168.1.0/24&#10;example.com" style="resize: vertical; font-family: monospace; font-size: 12px;"></textarea>
-                    <div class="settings-help">
-                        Domains and addresses listed here will bypass the proxy and connect directly. One entry per line. Changes apply on next proxy toggle.
-                    </div>
-                </div>
-                <div class="form-group proxy-auth-section">
-                    <label class="form-label">
-                        <span>Proxy Authentication</span>
-                        <label class="toggle-container">
-                            <input type="checkbox" id="proxyAuthToggle" disabled>
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </label>
-                    <div class="settings-help">
-                        If enabled, clients must provide username/password (HTTP Proxy “Authentication”)
-                    </div>
-                </div>
-                <div class="form-group proxy-auth-section" id="proxyAuthFields" style="display:none;">
-                    <label class="form-label">Proxy Username</label>
-                    <input type="text" class="form-input" id="proxyAuthUsername" placeholder="username" autocomplete="off" spellcheck="false">
-                    <div style="height: 6px;"></div>
-                    <label class="form-label">Proxy Password</label>
-                    <input type="password" class="form-input" id="proxyAuthPassword" placeholder="password" autocomplete="new-password">
-                    <div class="settings-note">
-                        Note: enabling this may break “Configure System Proxy” unless your apps support proxy auth.
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">
-                        <span>Authentication</span>
-                        <label class="toggle-container">
-                            <input type="checkbox" id="socks5AuthToggle" onchange="toggleSocks5Auth()">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </label>
-                    <div class="settings-help">
-                        SOCKS5 (upstream) username/password. 
-                    </div>
-                </div>
-                <div class="form-group" id="socks5AuthFields" style="display:none;">
-                    <label class="form-label">SOCKS5 Username</label>
-                    <input type="text" class="form-input" id="socks5AuthUsername" placeholder="username" autocomplete="off" spellcheck="false">
-                    <div style="height: 6px;"></div>
-                    <label class="form-label">SOCKS5 Password</label>
-                    <input type="password" class="form-input" id="socks5AuthPassword" placeholder="password" autocomplete="new-password">
-                    <div class="settings-note">
-                        Note: changes take effect on the next VPN start (or restart).
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">DNS Resolver (IP:Port)</label>
-                    <input type="text" class="form-input" id="resolverInput" placeholder="8.8.8.8:53" value="8.8.8.8:53">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Domain</label>
-                    <input type="text" class="form-input" id="domainInput" placeholder="s.example.com" value="s.example.com">
+            <!-- Workspaces / Presets -->
+            <div class="workspaces-bar" id="workspacesBar">
+                <span class="workspaces-bar-label">Presets</span>
+                <!-- tabs rendered by JS -->
+                <button class="ws-tab-add" onclick="addWorkspace()" title="Add preset">+</button>
+                <div class="ws-actions" id="wsActions" style="display:none;">
+                    <button class="ws-action-btn" onclick="renameActiveWorkspace()" title="Rename">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                    <button class="ws-action-btn danger" onclick="deleteActiveWorkspace()" title="Delete">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
                 </div>
             </div>
 
-            <button class="button button-start" id="startBtn" onclick="startService()">Start VPN</button>
-            <button class="button button-stop" id="stopBtn" onclick="stopService()" disabled>Stop VPN</button>
-            <button class="button" id="testBtn" onclick="testProxy()" style="background: #2196f3; color: white; margin-top: 0;" disabled>Test Proxy Connection</button>
+            <!-- Action Buttons -->
+            <div class="actions-section">
+                <button class="button button-start" id="startBtn" onclick="startService()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    Start VPN
+                </button>
+                <button class="button button-stop" id="stopBtn" onclick="stopService()" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+                    Stop VPN
+                </button>
+                <button class="button button-test" id="testBtn" onclick="testProxy()" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    Test Connection
+                </button>
+            </div>
+
+            <!-- Settings -->
+            <div class="settings-section">
+                <div class="settings-title">Configuration</div>
+                <div class="settings-card">
+                    <div class="settings-item">
+                        <div class="settings-row">
+                            <div>
+                                <div class="settings-item-label">System Proxy</div>
+                                <div class="settings-item-desc">Auto-configure system to route traffic through VPN</div>
+                            </div>
+                            <label class="toggle-container">
+                                <input type="checkbox" id="systemProxyToggle" checked onchange="toggleSystemProxy()">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="settings-item">
+                        <div class="form-group">
+                            <label class="form-label">Proxy Bypass List</label>
+                            <textarea class="form-input" id="proxyBypassInput" rows="2" placeholder="*.example.com&#10;192.168.1.0/24" style="font-size: 12px;"></textarea>
+                            <div class="settings-help">Domains and IPs to exclude from proxy. One per line.</div>
+                        </div>
+                    </div>
+
+                    <div class="form-group proxy-auth-section">
+                        <label class="form-label">
+                            <span>Proxy Authentication</span>
+                            <label class="toggle-container">
+                                <input type="checkbox" id="proxyAuthToggle" disabled>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </label>
+                    </div>
+                    <div class="form-group proxy-auth-section" id="proxyAuthFields" style="display:none;">
+                        <input type="text" class="form-input" id="proxyAuthUsername" placeholder="username" autocomplete="off" spellcheck="false">
+                        <input type="password" class="form-input" id="proxyAuthPassword" placeholder="password" autocomplete="new-password">
+                    </div>
+
+                    <div class="settings-item">
+                        <div class="settings-row">
+                            <div>
+                                <div class="settings-item-label">Authentication</div>
+                                <div class="settings-item-desc">SOCKS5 upstream username/password</div>
+                            </div>
+                            <label class="toggle-container">
+                                <input type="checkbox" id="socks5AuthToggle" onchange="toggleSocks5Auth()">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div id="socks5AuthFields" style="display:none;">
+                        <div class="settings-item" style="padding-top: 0; border-bottom: 1px solid var(--border-color);">
+                            <input type="text" class="form-input" id="socks5AuthUsername" placeholder="Username" autocomplete="off" spellcheck="false" style="margin-bottom: 8px;">
+                            <input type="password" class="form-input" id="socks5AuthPassword" placeholder="Password" autocomplete="new-password">
+                            <div class="settings-note">Changes take effect on next VPN start.</div>
+                        </div>
+                    </div>
+
+                    <div class="settings-item">
+                        <div class="form-group">
+                            <label class="form-label">DNS Resolver</label>
+                            <input type="text" class="form-input" id="resolverInput" placeholder="8.8.8.8:53" value="8.8.8.8:53">
+                        </div>
+                    </div>
+
+                    <div class="settings-item">
+                        <div class="form-group">
+                            <label class="form-label">Server Domain</label>
+                            <input type="text" class="form-input" id="domainInput" placeholder="s.example.com" value="s.example.com">
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Logs Panel -->
+        <!-- ==================== LOGS PANEL ==================== -->
         <div class="logs-panel">
             <div class="logs-header">
-                <span>📋 Logs</span>
+                <div class="logs-header-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    Activity Log
+                </div>
                 <div class="logs-header-controls">
                     <div class="logs-verbose-toggle">
                         <label>
@@ -1126,12 +1660,12 @@
                 </div>
             </div>
             <div class="log" id="log">
-                <div class="log-empty">No logs yet. Start the VPN to see activity.</div>
+                <div class="log-empty">No activity yet. Start the VPN to see logs.</div>
             </div>
         </div>
     </div>
 
-    <!-- Intro Modal -->
+    <!-- ==================== INTRO MODAL ==================== -->
     <div class="intro-modal hidden" id="introModal">
         <div class="intro-modal-content">
             <img src="intro.png" alt="SlipStream GUI Introduction" class="intro-modal-image">
@@ -1139,7 +1673,7 @@
         </div>
     </div>
 
-    <!-- DNS Checker Modal -->
+    <!-- ==================== DNS CHECKER MODAL ==================== -->
     <div class="modal" id="dnsCheckerModal" onclick="if(event.target.id === 'dnsCheckerModal') closeDnsChecker()">
         <div class="modal-content">
             <div class="modal-header">
@@ -1147,27 +1681,27 @@
                 <button class="modal-close" onclick="closeDnsChecker()">&times;</button>
             </div>
 
-            <div class="dns-checker" style="margin-top: 0;">
+            <div class="dns-checker">
                 <div class="dns-warning">
                     <strong>Important:</strong> Before running checks, please <strong>turn off any VPN</strong> that is currently running.
                     VPNs can change routing/DNS and make results incorrect.
                 </div>
 
-                <div class="form-group" style="margin-top: 12px;">
+                <div class="form-group" style="margin-bottom: 14px;">
                     <label class="form-label">Test Domain</label>
                     <input type="text" class="form-input" id="dnsTestDomainInput" placeholder="google.com" value="google.com">
-                    <div class="settings-help">We test if each DNS server can resolve this domain. For dnstt, use resolvers that support encrypted DNS (DoH/DoT); plain UDP resolvers like 8.8.8.8 or 9.9.9.9 may not work.</div>
+                    <div class="settings-help">We test if each DNS server can resolve this domain. For dnstt, use resolvers that support encrypted DNS (DoH/DoT).</div>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" style="margin-bottom: 14px;">
                     <label class="form-label">DNS Servers (one per line)</label>
                     <textarea class="form-input" id="dnsListInput" placeholder="1.1.1.1&#10;8.8.8.8&#10;9.9.9.9"></textarea>
-                    <div class="settings-help">Accepted format: IPv4 or IPv4:port (default port is 53). You can also paste with commas/spaces.</div>
+                    <div class="settings-help">IPv4 or IPv4:port (default 53). Commas/spaces also accepted.</div>
                 </div>
 
                 <div style="display: flex; gap: 10px; align-items: center;">
-                    <button class="button" id="dnsCheckBtn" onclick="startDnsCheck()" style="background:#673ab7; color:white; margin-top: 0;">Run DNS Check</button>
-                    <button class="button" id="dnsStopBtn" onclick="stopDnsCheck()" disabled style="background:#9e9e9e; color:white; margin-top: 0;">Stop</button>
+                    <button class="button" id="dnsCheckBtn" onclick="startDnsCheck()" style="background: var(--accent); color: white; margin: 0;">Run DNS Check</button>
+                    <button class="button" id="dnsStopBtn" onclick="stopDnsCheck()" disabled style="background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border-light); margin: 0;">Stop</button>
                     <div class="dns-muted dns-progress" id="dnsProgress" style="margin-left: auto; display:none;"></div>
                 </div>
 
@@ -1186,24 +1720,24 @@
                             </tr>
                         </thead>
                         <tbody id="dnsResultsBody">
-                            <tr><td colspan="8" class="dns-muted">Paste DNS servers above and click “Run DNS Check”.</td></tr>
+                            <tr><td colspan="8" class="dns-muted" style="text-align: center; padding: 20px;">Paste DNS servers above and click "Run DNS Check".</td></tr>
                         </tbody>
                     </table>
                 </div>
 
-                <div class="dns-muted" id="dnsSummary" style="margin-top: 10px;"></div>
+                <div class="dns-muted" id="dnsSummary" style="margin-top: 12px;"></div>
             </div>
         </div>
     </div>
 
-    <!-- Help Modal -->
+    <!-- ==================== HELP MODAL ==================== -->
     <div class="modal" id="helpModal" onclick="if(event.target.id === 'helpModal') closeHelp()">
         <div class="modal-content">
             <div class="modal-header">
                 <div class="modal-title">Help & About</div>
                 <button class="modal-close" onclick="closeHelp()">&times;</button>
             </div>
-            
+
             <div class="modal-section">
                 <h3>About SlipStream GUI</h3>
                 <p>SlipStream GUI is a user-friendly, cross-platform VPN client that makes it easy to connect to SlipStream VPN. It provides secure, encrypted tunneling for all your internet traffic through an intuitive graphical interface.</p>
@@ -1217,21 +1751,18 @@
                     <li>Enter your DNS Resolver (default: 8.8.8.8:53)</li>
                     <li>Enter your SlipStream server domain (default: s.example.com)</li>
                 </ul>
-                
                 <p><strong>Step 2: Start the VPN</strong></p>
                 <ul>
                     <li>Click the "Start VPN" button</li>
                     <li>Wait for the status indicators to show "Running"</li>
                     <li>The app will automatically configure system proxy if the toggle is enabled</li>
                 </ul>
-                
                 <p><strong>Step 3: Use Your Apps</strong></p>
                 <ul>
                     <li>If system proxy is configured, all apps will automatically use the VPN</li>
                     <li>Otherwise, configure individual apps to use HTTP proxy: <strong>127.0.0.1:8080</strong></li>
                     <li>Check the logs panel to see connection activity</li>
                 </ul>
-                
                 <p><strong>Step 4: Stop When Done</strong></p>
                 <ul>
                     <li>Click "Stop VPN" when you want to disconnect</li>
@@ -1272,10 +1803,9 @@
             </div>
 
             <div class="modal-section">
-                <button class="tech-button" onclick="toggleTechnical()">🔧 Are you a technical guy?</button>
+                <button class="tech-button" onclick="toggleTechnical()">Technical Details</button>
                 <div class="tech-section" id="techSection">
                     <h3>Technical Details</h3>
-                    
                     <h4>Architecture Overview</h4>
                     <p>SlipStream GUI is built with Electron and uses a multi-layer proxy architecture:</p>
                     <pre>Application Layer (Browser/Apps)
@@ -1285,60 +1815,37 @@ HTTP Proxy Server (Node.js - Port 8080)
 SOCKS5 Client (Port 5201)
     ↓ Encrypted Tunnel
 SlipStream VPN Server</pre>
-
                     <h4>How It Works</h4>
                     <p><strong>1. SlipStream Client Process:</strong></p>
                     <ul>
-                        <li>Runs the native <code>binaries/slipstream-client-mac-arm64</code> / <code>binaries/slipstream-client-mac-intel</code>, <code>binaries/slipstream-client-win.exe</code>, or <code>binaries/slipstream-client-linux</code> binary</li>
+                        <li>Runs the native <code>slipstream-client-*</code> binary</li>
                         <li>Establishes SOCKS5 proxy on <code>127.0.0.1:5201</code></li>
                         <li>Handles encryption and connection to SlipStream servers</li>
                     </ul>
-
                     <p><strong>2. HTTP Proxy Server:</strong></p>
                     <ul>
                         <li>Built with Node.js <code>http</code> module</li>
                         <li>Listens on <code>127.0.0.1:8080</code></li>
                         <li>Handles HTTP requests via <code>socks-proxy-agent</code></li>
                         <li>Handles HTTPS via CONNECT method with <code>socks</code> library</li>
-                        <li>Uses <code>http-proxy</code> library for enhanced CONNECT handling</li>
                     </ul>
-
                     <p><strong>3. System Proxy Configuration:</strong></p>
                     <ul>
-                        <li><strong>macOS:</strong> Uses <code>networksetup -setwebproxy</code> and <code>networksetup -setsecurewebproxy</code></li>
+                        <li><strong>macOS:</strong> Uses <code>networksetup -setwebproxy</code> and <code>-setsecurewebproxy</code></li>
                         <li><strong>Windows:</strong> Uses <code>netsh winhttp set proxy</code></li>
                         <li>Automatically detects active network interfaces on macOS</li>
                     </ul>
-
-                    <h4>Code Structure</h4>
-                    <ul>
-                        <li><strong>main.js:</strong> Electron main process - handles window creation, IPC, proxy server, and system integration</li>
-                        <li><strong>index.html:</strong> Renderer process - UI, status display, logs, and user interactions</li>
-                        <li><strong>check-system-proxy.js:</strong> Helper module to check current system proxy status</li>
-                        <li><strong>package.json:</strong> Dependencies: <code>electron</code>, <code>socks</code>, <code>socks-proxy-agent</code>, <code>http-proxy</code></li>
-                    </ul>
-
-                    <h4>Key Technologies</h4>
-                    <ul>
-                        <li><strong>Electron:</strong> Cross-platform desktop app framework</li>
-                        <li><strong>Node.js HTTP Module:</strong> HTTP proxy server implementation</li>
-                        <li><strong>SOCKS5:</strong> Protocol for routing traffic through SlipStream client</li>
-                        <li><strong>IPC (Inter-Process Communication):</strong> Communication between main and renderer processes</li>
-                        <li><strong>Child Process:</strong> Spawning and managing SlipStream client binary</li>
-                    </ul>
-
                     <h4>Request Flow</h4>
                     <pre>1. Browser sends HTTP request to 127.0.0.1:8080
 2. HTTP Proxy receives request
 3. For HTTP: Uses SocksProxyAgent to forward via SOCKS5
-4. For HTTPS: 
+4. For HTTPS:
    - Receives CONNECT request
    - Creates SOCKS5 tunnel via SocksClient.createConnection
    - Sends "200 Connection established" response
    - Pipes raw socket data bidirectionally
 5. SOCKS5 client forwards to SlipStream server
 6. Response flows back through the same path</pre>
-
                     <h4>Configuration Files</h4>
                     <ul>
                         <li><strong>settings.json:</strong> Stores user preferences (resolver, domain, verbose logging)</li>
@@ -1349,67 +1856,83 @@ SlipStream VPN Server</pre>
             </div>
 
             <div class="modal-section">
-                <h3>Sharing PC Internet via Mobile (Same Network)</h3>
-                <p>If your PC and mobile device are on the same Wi-Fi network, you can configure your mobile device to use your PC's internet connection (including the VPN) through the proxy.</p>
-                
+                <h3>Sharing VPN via Mobile (Same Network)</h3>
+                <p>If your PC and mobile device are on the same Wi-Fi network, you can configure your mobile device to use your PC's VPN connection through the proxy.</p>
                 <p><strong>Prerequisites:</strong></p>
                 <ul>
-                    <li>PC and mobile device must be connected to the same Wi-Fi network</li>
-                    <li>SlipStream GUI must be running with VPN started</li>
-                    <li>Find your PC's local IP address (see instructions below)</li>
+                    <li>PC and mobile device on the same Wi-Fi network</li>
+                    <li>SlipStream GUI running with VPN started</li>
+                    <li>Find your PC's local IP address</li>
                 </ul>
-
                 <p><strong>Finding Your PC's IP Address:</strong></p>
                 <ul>
-                    <li><strong>macOS/Linux:</strong> Open Terminal and run <code>ifconfig | grep "inet " | grep -v 127.0.0.1</code> or <code>ip addr show</code></li>
-                    <li><strong>Windows:</strong> Open Command Prompt and run <code>ipconfig</code>, look for "IPv4 Address" under your active network adapter</li>
-                    <li>It will typically look like <code>192.168.1.XXX</code> or <code>10.0.0.XXX</code></li>
+                    <li><strong>macOS/Linux:</strong> Terminal: <code>ifconfig | grep "inet " | grep -v 127.0.0.1</code></li>
+                    <li><strong>Windows:</strong> Command Prompt: <code>ipconfig</code> (look for IPv4 Address)</li>
                 </ul>
-
-                <h4>📱 iOS Configuration</h4>
+                <h4>iOS Configuration</h4>
                 <ol>
-                    <li>On your iPhone/iPad, go to <strong>Settings</strong> → <strong>Wi-Fi</strong></li>
-                    <li>Tap the <strong>(i)</strong> icon next to your connected Wi-Fi network</li>
-                    <li>Scroll down to <strong>"HTTP Proxy"</strong> section</li>
-                    <li>Select <strong>"Manual"</strong></li>
-                    <li>Enter your PC's IP address in <strong>"Server"</strong> field (e.g., <code>192.168.1.100</code>)</li>
-                    <li>Enter <strong>"8080"</strong> in the <strong>"Port"</strong> field</li>
-                    <li>Leave <strong>"Authentication"</strong> off</li>
-                    <li>Tap <strong>"Save"</strong> in the top right</li>
+                    <li>Go to <strong>Settings &rarr; Wi-Fi</strong></li>
+                    <li>Tap <strong>(i)</strong> next to your connected network</li>
+                    <li>Scroll to <strong>"HTTP Proxy"</strong> and select <strong>"Manual"</strong></li>
+                    <li>Server: your PC's IP (e.g., <code>192.168.1.100</code>)</li>
+                    <li>Port: <strong>8080</strong></li>
+                    <li>Tap <strong>Save</strong></li>
                 </ol>
-                <p><strong>Note:</strong> Your iOS device will now route all internet traffic through your PC's VPN connection. To disable, go back to Wi-Fi settings and set HTTP Proxy to "Off".</p>
-
-                <h4>🤖 Android Configuration</h4>
+                <h4>Android Configuration</h4>
                 <ol>
-                    <li>On your Android device, go to <strong>Settings</strong> → <strong>Wi-Fi</strong></li>
-                    <li>Long-press on your connected Wi-Fi network</li>
-                    <li>Select <strong>"Modify network"</strong> or <strong>"Network details"</strong></li>
-                    <li>Tap <strong>"Advanced options"</strong> or expand the advanced settings</li>
-                    <li>Under <strong>"Proxy"</strong>, select <strong>"Manual"</strong></li>
-                    <li>Enter your PC's IP address in <strong>"Proxy hostname"</strong> (e.g., <code>192.168.1.100</code>)</li>
-                    <li>Enter <strong>"8080"</strong> in <strong>"Proxy port"</strong></li>
-                    <li>Leave <strong>"Bypass proxy for"</strong> empty (or add local addresses like <code>localhost,127.0.0.1</code>)</li>
-                    <li>Tap <strong>"Save"</strong></li>
+                    <li>Go to <strong>Settings &rarr; Wi-Fi</strong></li>
+                    <li>Long-press your connected network &rarr; <strong>"Modify network"</strong></li>
+                    <li>Expand <strong>Advanced options</strong></li>
+                    <li>Proxy: <strong>Manual</strong></li>
+                    <li>Hostname: your PC's IP, Port: <strong>8080</strong></li>
+                    <li>Tap <strong>Save</strong></li>
                 </ol>
-                <p><strong>Note:</strong> Some Android versions may have slightly different menu paths. If you can't find these options, try: <strong>Settings</strong> → <strong>Network & Internet</strong> → <strong>Wi-Fi</strong> → (tap network) → <strong>Advanced</strong> → <strong>Proxy</strong>.</p>
-                <p><strong>To disable:</strong> Go back to Wi-Fi settings, modify the network, and set Proxy back to "None".</p>
-
-                <p><strong>⚠️ Important:</strong></p>
+                <p><strong>Important:</strong></p>
                 <ul>
-                    <li>Make sure your PC's firewall allows incoming connections on port 8080</li>
-                    <li>The proxy only works while both devices are on the same network</li>
-                    <li>If your PC's IP address changes, you'll need to update the proxy settings on your mobile device</li>
-                    <li>Some apps may bypass system proxy settings - you may need to configure them individually</li>
+                    <li>Ensure your PC firewall allows incoming connections on port 8080</li>
+                    <li>Only works while both devices are on the same network</li>
+                    <li>If PC's IP changes, update the proxy settings on your mobile device</li>
                 </ul>
             </div>
 
             <div class="modal-section">
                 <h3>Version</h3>
-                <p>SlipStream GUI <span class="version-badge" id="helpVersionBadge">v—</span></p>
+                <p>SlipStream GUI <span class="version-badge" id="helpVersionBadge">v---</span></p>
             </div>
         </div>
     </div>
 
+    <!-- ==================== GITHUB STAR MODAL ==================== -->
+    <div class="modal" id="githubStarModal" onclick="if(event.target.id === 'githubStarModal') closeGithubStarModal()">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Enjoying SlipStream GUI?</div>
+            </div>
+            <div class="github-star-desc">
+                Starring the project on GitHub helps others discover it and supports ongoing development.
+            </div>
+            <div class="github-star-actions">
+                <button class="button" style="background: var(--accent); color: white;" onclick="openGitHub()">
+                    Open GitHub & Star
+                </button>
+                <button class="button" style="background: var(--bg-card); color: var(--text-secondary); border: 1px solid var(--border-light);" onclick="closeGithubStarModal()">
+                    Maybe Later
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== INLINE DIALOG ==================== -->
+    <div class="inline-dialog" id="inlineDialog">
+        <div class="inline-dialog-box">
+            <div class="inline-dialog-title" id="inlineDialogTitle"></div>
+            <input class="inline-dialog-input" id="inlineDialogInput" type="text" style="display:none;" spellcheck="false" autocomplete="off">
+            <div class="inline-dialog-msg" id="inlineDialogMsg" style="display:none;"></div>
+            <div class="inline-dialog-actions" id="inlineDialogActions"></div>
+        </div>
+    </div>
+
+    <!-- ==================== SCRIPT ==================== -->
     <script>
         const { ipcRenderer } = require('electron');
 
@@ -1418,15 +1941,65 @@ SlipStream VPN Server</pre>
         let proxyBypassSaveTimer = null;
         let socks5AuthSaveTimer = null;
 
+        /* ============ THEME TOGGLE ============ */
+        const THEME_KEY = 'slipstream_theme';
+
+        function getStoredTheme() {
+            try { return localStorage.getItem(THEME_KEY); } catch (_) { return null; }
+        }
+
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            try { localStorage.setItem(THEME_KEY, theme); } catch (_) {}
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme') || 'light';
+            applyTheme(current === 'light' ? 'dark' : 'light');
+        }
+
+        // Apply saved theme on load (before paint)
+        (function() {
+            const saved = getStoredTheme();
+            if (saved === 'dark' || saved === 'light') {
+                document.documentElement.setAttribute('data-theme', saved);
+            }
+        })();
+
+        /* ============ GITHUB STAR ============ */
+        const GITHUB_STAR_CLICK_KEY = 'slipstream_github_star_clicked';
+        let githubStarModalShownThisSession = false;
+
+        function hasGithubStarClick() {
+            try { return window.localStorage.getItem(GITHUB_STAR_CLICK_KEY) === '1'; } catch (_) { return false; }
+        }
+
+        function closeGithubStarModal() {
+            const modal = document.getElementById('githubStarModal');
+            if (!modal) return;
+            modal.classList.remove('show');
+        }
+
+        function markGithubStarClicked() {
+            try { window.localStorage.setItem(GITHUB_STAR_CLICK_KEY, '1'); } catch (_) {}
+            closeGithubStarModal();
+        }
+
+        function openGithubStarModal() {
+            if (hasGithubStarClick() || githubStarModalShownThisSession) return;
+            const modal = document.getElementById('githubStarModal');
+            if (!modal) return;
+            githubStarModalShownThisSession = true;
+            modal.classList.add('show');
+        }
+
+        /* ============ MODALS ============ */
         function showDnsChecker() {
             document.getElementById('dnsCheckerModal')?.classList.add('show');
         }
 
         function closeDnsChecker() {
-            // If a scan is running, stop it when the modal closes
-            try {
-                if (dnsCheckRunning) stopDnsCheck();
-            } catch (_) {}
+            try { if (dnsCheckRunning) stopDnsCheck(); } catch (_) {}
             document.getElementById('dnsCheckerModal')?.classList.remove('show');
         }
 
@@ -1436,57 +2009,70 @@ SlipStream VPN Server</pre>
 
         function closeHelp() {
             document.getElementById('helpModal').classList.remove('show');
-            // Hide technical section when closing
             const techSection = document.getElementById('techSection');
-            if (techSection) {
-                techSection.classList.remove('show');
-            }
+            if (techSection) techSection.classList.remove('show');
         }
 
         function toggleTechnical() {
             const techSection = document.getElementById('techSection');
-            if (techSection) {
-                techSection.classList.toggle('show');
-            }
+            if (techSection) techSection.classList.toggle('show');
         }
 
         function closeIntro() {
             const introModal = document.getElementById('introModal');
-            if (introModal) {
-                introModal.classList.add('hidden');
-            }
+            if (introModal) introModal.classList.add('hidden');
         }
 
         async function openGitHub() {
-            await ipcRenderer.invoke('open-external', 'http://github.com/mirzaaghazadeh/SlipStreamGUI');
+            try {
+                await ipcRenderer.invoke('open-external', 'http://github.com/mirzaaghazadeh/SlipStreamGUI');
+                markGithubStarClicked();
+            } catch (err) {
+                console.error('Failed to open GitHub:', err);
+            }
         }
 
+        /* ============ LOGS ============ */
         function clearLogs() {
             const log = document.getElementById('log');
-            log.innerHTML = '<div class="log-empty">No logs yet. Start the VPN to see activity.</div>';
+            log.innerHTML = '<div class="log-empty">No activity yet. Start the VPN to see logs.</div>';
         }
 
+        function addLog(message, isError = false, isSuccess = false) {
+            const log = document.getElementById('log');
+            const emptyMsg = log.querySelector('.log-empty');
+            if (emptyMsg) emptyMsg.remove();
+
+            const entry = document.createElement('div');
+            entry.className = 'log-entry' + (isError ? ' error' : '') + (isSuccess ? ' success' : '');
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        /* ============ STATUS ============ */
         function updateStatus(running, details = {}) {
             isRunning = running;
             const indicator = document.getElementById('statusIndicator');
             const text = document.getElementById('statusText');
             const startBtn = document.getElementById('startBtn');
             const stopBtn = document.getElementById('stopBtn');
+            const statusOrb = document.getElementById('statusOrb');
 
-            // Main status
             if (running) {
-                indicator.classList.add('active');
+                if (indicator) indicator.classList.add('active');
+                if (statusOrb) statusOrb.classList.add('active');
                 text.textContent = 'Connected';
                 startBtn.disabled = true;
                 stopBtn.disabled = false;
             } else {
-                indicator.classList.remove('active');
+                if (indicator) indicator.classList.remove('active');
+                if (statusOrb) statusOrb.classList.remove('active');
                 text.textContent = 'Disconnected';
                 startBtn.disabled = false;
                 stopBtn.disabled = true;
             }
 
-            // SlipStream status
             const slipstreamIndicator = document.getElementById('slipstreamIndicator');
             const slipstreamStatus = document.getElementById('slipstreamStatus');
             if (details.slipstreamRunning) {
@@ -1499,7 +2085,6 @@ SlipStream VPN Server</pre>
                 slipstreamStatus.textContent = 'Stopped';
             }
 
-            // HTTP Proxy status
             const proxyIndicator = document.getElementById('proxyIndicator');
             const proxyStatus = document.getElementById('proxyStatus');
             if (details.proxyRunning) {
@@ -1512,19 +2097,29 @@ SlipStream VPN Server</pre>
                 proxyStatus.textContent = 'Stopped';
             }
 
-            // System proxy status
             const systemProxyStatus = document.getElementById('systemProxyStatus');
-            systemProxyStatus.textContent = details.systemProxyConfigured ? 'Configured' : 'Not Configured (Optional)';
-            
-            // Update toggle to match system proxy status
+            const systemProxyIndicator = document.getElementById('systemProxyIndicator');
+            if (details.systemProxyConfigured) {
+                systemProxyStatus.textContent = 'Configured';
+                if (systemProxyIndicator) {
+                    systemProxyIndicator.classList.add('running');
+                    systemProxyIndicator.classList.remove('stopped');
+                }
+            } else {
+                systemProxyStatus.textContent = 'Not Configured';
+                if (systemProxyIndicator) {
+                    systemProxyIndicator.classList.remove('running');
+                    systemProxyIndicator.classList.add('stopped');
+                }
+            }
+
             const toggle = document.getElementById('systemProxyToggle');
             if (toggle && details.systemProxyConfigured !== undefined) {
                 toggle.checked = details.systemProxyConfigured;
             }
-            
-            // Proxy info is now shown in logs instead
         }
 
+        /* ============ SETTINGS HANDLERS ============ */
         async function toggleVerbose() {
             const toggle = document.getElementById('verboseToggle');
             const enable = toggle.checked;
@@ -1533,12 +2128,11 @@ SlipStream VPN Server</pre>
                 if (result.success) {
                     addLog(`Verbose logging ${enable ? 'enabled' : 'disabled'}`);
                 } else {
-                    toggle.checked = !enable; // Revert toggle
+                    toggle.checked = !enable;
                     addLog('Failed to update verbose setting', true);
                 }
             } catch (err) {
-                console.error('Error toggling verbose:', err);
-                toggle.checked = !enable; // Revert toggle
+                toggle.checked = !enable;
                 addLog('Error: Failed to toggle verbose logging', true);
             }
         }
@@ -1546,30 +2140,22 @@ SlipStream VPN Server</pre>
         async function toggleSystemProxy() {
             const toggle = document.getElementById('systemProxyToggle');
             const enable = toggle.checked;
-            
+
             if (!isRunning) {
                 addLog('Please start the VPN first before configuring system proxy', true);
-                toggle.checked = !enable; // Revert toggle
+                toggle.checked = !enable;
                 return;
             }
-            
+
             const result = await ipcRenderer.invoke('toggle-system-proxy', enable);
             if (result.success) {
-                // Update status with full details
                 const currentStatus = await ipcRenderer.invoke('get-status');
                 updateStatus(isRunning, currentStatus.details || { systemProxyConfigured: result.configured });
-                
-                // Update toggle to match actual state
                 toggle.checked = result.configured;
-                
-                if (enable) {
-                    addLog('System proxy configured successfully', false, true);
-                } else {
-                    addLog('System proxy unconfigured');
-                }
+                addLog(enable ? 'System proxy configured successfully' : 'System proxy unconfigured', false, enable);
             } else {
                 addLog('Failed to ' + (enable ? 'configure' : 'unconfigure') + ' system proxy', true);
-                toggle.checked = !enable; // Revert toggle
+                toggle.checked = !enable;
             }
         }
 
@@ -1584,25 +2170,18 @@ SlipStream VPN Server</pre>
             const enabled = document.getElementById('socks5AuthToggle')?.checked || false;
             const username = document.getElementById('socks5AuthUsername')?.value || '';
             const password = document.getElementById('socks5AuthPassword')?.value || '';
-
             try {
                 const result = await ipcRenderer.invoke('set-socks5-auth', { enabled, username, password });
-                if (result?.success) {
-                    addLog(`SOCKS5 authentication ${enabled ? 'enabled' : 'disabled'}`);
-                } else {
-                    addLog('Failed to update SOCKS5 authentication settings', true);
-                }
+                if (result?.success) addLog(`SOCKS5 authentication ${enabled ? 'enabled' : 'disabled'}`);
+                else addLog('Failed to update SOCKS5 authentication settings', true);
             } catch (err) {
-                console.error('Error saving SOCKS5 auth settings:', err);
                 addLog('Error: Failed to update SOCKS5 authentication settings', true);
             }
         }
 
         function scheduleSocks5AuthSave() {
             if (socks5AuthSaveTimer) clearTimeout(socks5AuthSaveTimer);
-            socks5AuthSaveTimer = setTimeout(() => {
-                saveSocks5AuthSettings();
-            }, 300);
+            socks5AuthSaveTimer = setTimeout(() => saveSocks5AuthSettings(), 300);
         }
 
         async function toggleSocks5Auth() {
@@ -1613,71 +2192,44 @@ SlipStream VPN Server</pre>
         async function saveProxyBypassList() {
             const text = document.getElementById('proxyBypassInput')?.value || '';
             const list = text.split('\n').map(s => s.trim()).filter(Boolean);
-            try {
-                await ipcRenderer.invoke('set-proxy-bypass-list', list);
-            } catch (err) {
-                console.error('Error saving proxy bypass list:', err);
-            }
+            try { await ipcRenderer.invoke('set-proxy-bypass-list', list); } catch (err) {}
         }
 
         function scheduleProxyBypassSave() {
             if (proxyBypassSaveTimer) clearTimeout(proxyBypassSaveTimer);
-            proxyBypassSaveTimer = setTimeout(() => {
-                saveProxyBypassList();
-            }, 500);
+            proxyBypassSaveTimer = setTimeout(() => saveProxyBypassList(), 500);
         }
 
+        /* ============ VPN CONTROLS ============ */
         async function startService() {
-            // Ensure SOCKS5 auth settings are saved before starting.
-            // This avoids a race where the user toggles/edits creds and immediately hits "Start VPN".
             try {
-                if (socks5AuthSaveTimer) {
-                    clearTimeout(socks5AuthSaveTimer);
-                    socks5AuthSaveTimer = null;
-                }
-
+                if (socks5AuthSaveTimer) { clearTimeout(socks5AuthSaveTimer); socks5AuthSaveTimer = null; }
                 const socksToggle = document.getElementById('socks5AuthToggle');
                 const socksUser = document.getElementById('socks5AuthUsername')?.value || '';
                 const socksPass = document.getElementById('socks5AuthPassword')?.value || '';
-
-                // If creds are present but toggle is off, auto-enable to match user intent.
                 if (socksToggle && !socksToggle.checked && socksUser && socksPass) {
                     socksToggle.checked = true;
                     updateSocks5AuthVisibility();
-                    addLog('SOCKS5 credentials detected — enabling SOCKS5 authentication', false, true);
+                    addLog('SOCKS5 credentials detected \u2014 enabling SOCKS5 authentication', false, true);
                 }
-
                 await saveSocks5AuthSettings();
-                // Save bypass list before starting
-                if (proxyBypassSaveTimer) {
-                    clearTimeout(proxyBypassSaveTimer);
-                    proxyBypassSaveTimer = null;
-                }
+                if (proxyBypassSaveTimer) { clearTimeout(proxyBypassSaveTimer); proxyBypassSaveTimer = null; }
                 await saveProxyBypassList();
-            } catch (_) {
-                // Non-fatal: starting can still proceed, but auth may not apply until next restart.
-            }
+            } catch (_) {}
 
             const resolver = document.getElementById('resolverInput').value.trim();
             const domain = document.getElementById('domainInput').value.trim();
-            const tunMode = false;
             useTunMode = false;
-            
-            if (!resolver || !domain) {
-                addLog('Error: Please fill in all settings', true);
-                return;
-            }
 
-            const result = await ipcRenderer.invoke('start-service', { resolver, domain, tunMode });
+            if (!resolver || !domain) { addLog('Error: Please fill in all settings', true); return; }
+
+            const result = await ipcRenderer.invoke('start-service', { resolver, domain, tunMode: false });
             updateStatus(result.success, result.details || {});
             if (result.success) {
-                addLog(`Service started successfully`, false, true);
-                addLog(`HTTP proxy listening on 127.0.0.1:8080`);
-                
-                // Enable test button
+                addLog('Service started successfully', false, true);
+                addLog('HTTP proxy listening on 127.0.0.1:8080');
                 document.getElementById('testBtn').disabled = false;
-                
-                // Auto-configure system proxy if toggle is ON
+
                 const toggle = document.getElementById('systemProxyToggle');
                 if (toggle && toggle.checked) {
                     setTimeout(async () => {
@@ -1686,18 +2238,15 @@ SlipStream VPN Server</pre>
                             const currentStatus = await ipcRenderer.invoke('get-status');
                             updateStatus(isRunning, currentStatus.details || {});
                             addLog('System proxy configured automatically', false, true);
-                            
-                            // Auto-test after a delay
-                            setTimeout(() => {
-                                testProxy();
-                            }, 2000);
+                            setTimeout(() => testProxy(), 2000);
                         } else {
-                            addLog('System proxy auto-configuration failed. You can configure it manually in Settings.', true);
+                            addLog('System proxy auto-configuration failed.', true);
                         }
                     }, 1000);
                 } else {
                     addLog('Configure your apps to use proxy: 127.0.0.1:8080');
                 }
+                maybeShowGithubStarModalAfterConnect();
             } else {
                 addLog('Error: ' + result.message, true);
             }
@@ -1714,39 +2263,24 @@ SlipStream VPN Server</pre>
             const testBtn = document.getElementById('testBtn');
             testBtn.disabled = true;
             testBtn.textContent = 'Testing...';
-            
             addLog('Testing proxy connection...');
-            
             try {
                 const result = await ipcRenderer.invoke('test-proxy');
                 if (result.success) {
-                    addLog(`✅ Test successful! IP: ${result.ip}`, false, true);
+                    addLog(`Test successful! IP: ${result.ip}`, false, true);
                     addLog(`Response time: ${result.responseTime}ms`, false, true);
                 } else {
-                    addLog(`❌ Test failed: ${result.error}`, true);
+                    addLog(`Test failed: ${result.error}`, true);
                 }
             } catch (err) {
-                addLog(`❌ Test error: ${err.message}`, true);
+                addLog(`Test error: ${err.message}`, true);
             } finally {
                 testBtn.disabled = false;
-                testBtn.textContent = 'Test Proxy Connection';
+                testBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Test Connection';
             }
         }
 
-        function addLog(message, isError = false, isSuccess = false) {
-            const log = document.getElementById('log');
-            const emptyMsg = log.querySelector('.log-empty');
-            if (emptyMsg) {
-                emptyMsg.remove();
-            }
-            
-            const entry = document.createElement('div');
-            entry.className = 'log-entry' + (isError ? ' error' : '') + (isSuccess ? ' success' : '');
-            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-            log.appendChild(entry);
-            log.scrollTop = log.scrollHeight;
-        }
-
+        /* ============ DNS CHECKER ============ */
         let dnsCheckAbort = { aborted: false };
         let dnsCheckRunning = false;
         let dnsLastServers = [];
@@ -1765,21 +2299,13 @@ SlipStream VPN Server</pre>
 
         async function applyResolverFromDnsChecker(serverText) {
             const resolver = normalizeResolverPort53(serverText);
-            if (!resolver) {
-                addLog('DNS Checker: could not parse DNS server IP', true);
-                return;
-            }
-
+            if (!resolver) { addLog('DNS Checker: could not parse DNS server IP', true); return; }
             const resolverInput = document.getElementById('resolverInput');
             if (resolverInput) resolverInput.value = resolver;
-
             try {
                 const result = await ipcRenderer.invoke('set-resolver', { resolver });
-                if (result?.success) {
-                    addLog(`DNS Checker: set DNS Resolver to ${result.resolver}`, false, true);
-                } else {
-                    addLog(`DNS Checker: failed to save resolver (${result?.error || 'Unknown error'})`, true);
-                }
+                if (result?.success) { addLog(`DNS Checker: set DNS Resolver to ${result.resolver}`, false, true); closeDnsChecker(); }
+                else addLog(`DNS Checker: failed to save resolver (${result?.error || 'Unknown error'})`, true);
             } catch (err) {
                 addLog(`DNS Checker: failed to save resolver (${err?.message || String(err)})`, true);
             }
@@ -1790,27 +2316,16 @@ SlipStream VPN Server</pre>
             const items = [];
             for (const line of lines) {
                 const trimmed = String(line || '').trim();
-                if (!trimmed) continue;
-                // Ignore markdown/comment headings like "### Tabriz"
-                if (trimmed.startsWith('#')) continue;
-
-                // Allow comma/space/tab separated entries on non-comment lines
+                if (!trimmed || trimmed.startsWith('#')) continue;
                 const parts = trimmed.replace(/[,\t ]+/g, '\n').split('\n');
                 for (const part of parts) {
                     const t = String(part || '').trim();
-                    if (!t) continue;
-                    if (t.startsWith('#')) continue;
+                    if (!t || t.startsWith('#')) continue;
                     items.push(t);
                 }
             }
-            const uniq = [];
-            const seen = new Set();
-            for (const it of items) {
-                const key = it.toLowerCase();
-                if (seen.has(key)) continue;
-                seen.add(key);
-                uniq.push(it);
-            }
+            const uniq = [], seen = new Set();
+            for (const it of items) { const key = it.toLowerCase(); if (seen.has(key)) continue; seen.add(key); uniq.push(it); }
             return uniq;
         }
 
@@ -1838,13 +2353,7 @@ SlipStream VPN Server</pre>
         function setDnsSummaryCounts(ok, pingOnly, bad) {
             const el = document.getElementById('dnsSummary');
             if (!el) return;
-            el.innerHTML = `
-                <span class="dns-status-ok">OK: ${ok}</span>
-                <span class="dns-muted"> | </span>
-                <span class="dns-status-warn">Ping Only: ${pingOnly}</span>
-                <span class="dns-muted"> | </span>
-                <span class="dns-status-bad">Unreachable/Error: ${bad}</span>
-            `;
+            el.innerHTML = `<span class="dns-status-ok">OK: ${ok}</span> <span class="dns-muted">|</span> <span class="dns-status-warn">Ping Only: ${pingOnly}</span> <span class="dns-muted">|</span> <span class="dns-status-bad">Unreachable/Error: ${bad}</span>`;
         }
 
         function renderDnsRows(servers) {
@@ -1854,151 +2363,78 @@ SlipStream VPN Server</pre>
             servers.forEach((server, idx) => {
                 const tr = document.createElement('tr');
                 tr.id = `dns-row-${idx}`;
-                tr.innerHTML = `
-                    <td>${server}</td>
-                    <td class="dns-muted">…</td>
-                    <td class="dns-muted">…</td>
-                    <td class="dns-muted">-</td>
-                    <td class="dns-muted">-</td>
-                    <td class="dns-muted">Queued</td>
-                    <td class="dns-muted">-</td>
-                    <td class="dns-muted">-</td>
-                `;
+                tr.innerHTML = `<td>${server}</td><td class="dns-muted">...</td><td class="dns-muted">...</td><td class="dns-muted">-</td><td class="dns-muted">-</td><td class="dns-muted">Queued</td><td class="dns-muted">-</td><td class="dns-muted">-</td>`;
                 body.appendChild(tr);
             });
         }
 
         function statusSortKey(status) {
             const s = String(status || '').toLowerCase();
-            if (s === 'ok') return 0;
-            if (s === 'ping only') return 1;
-            if (s === 'unreachable') return 2;
-            if (s === 'error') return 3;
-            return 9;
+            if (s === 'ok') return 0; if (s === 'ping only') return 1; if (s === 'unreachable') return 2; if (s === 'error') return 3; return 9;
         }
 
         function sortDnsTableFinal() {
             const servers = Array.isArray(dnsLastServers) ? dnsLastServers : [];
             const results = Array.isArray(dnsLastResults) ? dnsLastResults : [];
             if (!servers.length) return;
-
-            const entries = servers.map((server, idx) => ({
-                idx,
-                server,
-                result: results[idx] || null
-            }));
-
-            entries.sort((a, b) => {
-                const ak = statusSortKey(a.result?.status);
-                const bk = statusSortKey(b.result?.status);
-                if (ak !== bk) return ak - bk;
-                const as = String(a.server || '');
-                const bs = String(b.server || '');
-                const cmp = as.localeCompare(bs);
-                if (cmp !== 0) return cmp;
-                return a.idx - b.idx;
-            });
-
+            const entries = servers.map((server, idx) => ({ idx, server, result: results[idx] || null }));
+            entries.sort((a, b) => { const ak = statusSortKey(a.result?.status); const bk = statusSortKey(b.result?.status); return ak !== bk ? ak - bk : a.idx - b.idx; });
             const body = document.getElementById('dnsResultsBody');
             if (!body) return;
             body.innerHTML = '';
-
-            // Re-render in sorted order (final results only)
             entries.forEach((entry, newIdx) => {
                 const tr = document.createElement('tr');
                 tr.id = `dns-row-${newIdx}`;
-                tr.innerHTML = `
-                    <td>${entry.server}</td>
-                    <td class="dns-muted">-</td>
-                    <td class="dns-muted">-</td>
-                    <td class="dns-muted">-</td>
-                    <td class="dns-muted">-</td>
-                    <td class="dns-muted">-</td>
-                    <td class="dns-muted">-</td>
-                    <td class="dns-muted">-</td>
-                `;
+                tr.innerHTML = `<td>${entry.server}</td><td class="dns-muted">-</td><td class="dns-muted">-</td><td class="dns-muted">-</td><td class="dns-muted">-</td><td class="dns-muted">-</td><td class="dns-muted">-</td><td class="dns-muted">-</td>`;
                 body.appendChild(tr);
-
-                // Paint final data into the row
-                if (entry.result) {
-                    updateDnsRow(newIdx, entry.result);
-                } else {
-                    updateDnsRow(newIdx, {
-                        ok: false,
-                        ping: { ok: false, timeMs: 0 },
-                        dns: { ok: false, timeMs: 0, answers: [], error: '-' },
-                        status: 'Unreachable'
-                    });
-                }
+                if (entry.result) updateDnsRow(newIdx, entry.result);
+                else updateDnsRow(newIdx, { ok: false, ping: { ok: false, timeMs: 0 }, dns: { ok: false, timeMs: 0, answers: [], error: '-' }, status: 'Unreachable' });
             });
         }
 
         function updateDnsRow(idx, data) {
             const tr = document.getElementById(`dns-row-${idx}`);
             if (!tr) return;
-
             const pingOk = !!data?.ping?.ok;
             const dnsOk = !!data?.dns?.ok;
             const status = data?.status || (data?.ok ? 'Unknown' : 'Error');
-
-            const statusClass =
-                status === 'OK' ? 'dns-status-ok' :
-                status === 'Ping Only' ? 'dns-status-warn' :
-                'dns-status-bad';
-
-            const answer = Array.isArray(data?.dns?.answers) && data.dns.answers.length
-                ? String(data.dns.answers[0])
-                : (data?.dns?.error ? String(data.dns.error) : '-');
-
-            tr.children[1].textContent = data?.stage === 'checking' ? '…' : (pingOk ? '✓' : '✗');
-            tr.children[2].textContent = data?.stage === 'checking' ? '…' : (dnsOk ? '✓' : '✗');
-            tr.children[3].textContent = data?.stage === 'checking' ? '-' : (pingOk ? (data?.ping?.timeMs ?? '-') : '-');
-            tr.children[4].textContent = data?.stage === 'checking' ? '-' : (dnsOk ? (data?.dns?.timeMs ?? '-') : '-');
+            const statusClass = status === 'OK' ? 'dns-status-ok' : status === 'Ping Only' ? 'dns-status-warn' : 'dns-status-bad';
+            const answer = Array.isArray(data?.dns?.answers) && data.dns.answers.length ? String(data.dns.answers[0]) : (data?.dns?.error ? String(data.dns.error) : '-');
+            const checking = data?.stage === 'checking';
+            tr.children[1].textContent = checking ? '...' : (pingOk ? '\u2713' : '\u2717');
+            tr.children[2].textContent = checking ? '...' : (dnsOk ? '\u2713' : '\u2717');
+            tr.children[3].textContent = checking ? '-' : (pingOk ? (data?.ping?.timeMs ?? '-') : '-');
+            tr.children[4].textContent = checking ? '-' : (dnsOk ? (data?.dns?.timeMs ?? '-') : '-');
             tr.children[5].innerHTML = `<span class="${statusClass}">${status}</span>`;
-            tr.children[6].textContent = data?.stage === 'checking' ? '-' : answer;
-            tr.children[1].classList.toggle('dns-muted', data?.stage === 'checking');
-            tr.children[2].classList.toggle('dns-muted', data?.stage === 'checking');
-            tr.children[3].classList.toggle('dns-muted', data?.stage === 'checking');
-            tr.children[4].classList.toggle('dns-muted', data?.stage === 'checking');
-
-            // Action button: only enable for OK rows, and always force port 53
+            tr.children[6].textContent = checking ? '-' : answer;
+            tr.children[1].classList.toggle('dns-muted', checking);
+            tr.children[2].classList.toggle('dns-muted', checking);
+            tr.children[3].classList.toggle('dns-muted', checking);
+            tr.children[4].classList.toggle('dns-muted', checking);
             const actionTd = tr.children[7];
             if (actionTd) {
                 const serverText = tr.children[0]?.textContent || '';
                 const resolver = normalizeResolverPort53(serverText);
-                const canUse = status === 'OK' && !!resolver && data?.stage !== 'checking';
+                const canUse = status === 'OK' && !!resolver && !checking;
                 actionTd.textContent = '';
                 const btn = document.createElement('button');
                 btn.className = 'dns-use-btn';
                 btn.textContent = 'Use';
                 btn.disabled = !canUse;
                 btn.title = canUse ? `Set DNS Resolver to ${resolver}` : 'Only available for OK results';
-                btn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    applyResolverFromDnsChecker(serverText);
-                });
+                btn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); applyResolverFromDnsChecker(serverText); });
                 actionTd.appendChild(btn);
             }
         }
 
         async function startDnsCheck() {
             if (dnsCheckRunning) return;
-
             const domain = document.getElementById('dnsTestDomainInput')?.value?.trim() || '';
             const listText = document.getElementById('dnsListInput')?.value || '';
             const servers = parseDnsServersInput(listText);
+            if (!domain) { addLog('DNS Checker: Please enter a test domain', true); return; }
+            if (!servers.length) { addLog('DNS Checker: Please enter at least one DNS server IP', true); return; }
 
-            if (!domain) {
-                addLog('DNS Checker: Please enter a test domain (e.g. google.com)', true);
-                return;
-            }
-            if (!servers.length) {
-                addLog('DNS Checker: Please enter at least one DNS server IP', true);
-                return;
-            }
-
-            // Run DNS checks using a bounded concurrency worker pool
             const CONCURRENCY = 100;
             dnsCheckAbort = { aborted: false };
             setDnsUiRunning(true);
@@ -2007,75 +2443,30 @@ SlipStream VPN Server</pre>
             renderDnsRows(servers);
             setDnsProgress(`0 / ${servers.length}`);
             setDnsSummaryCounts(0, 0, 0);
-
             let ok = 0, pingOnly = 0, bad = 0, done = 0;
-
-            // Queue of indices left to check
             const queue = Array.from({ length: servers.length }, (_, i) => i);
-
-            // Worker function
             const worker = async () => {
                 while (true) {
-                    if (dnsCheckAbort.aborted) return;
-                    if (queue.length === 0) return;
-
+                    if (dnsCheckAbort.aborted || queue.length === 0) return;
                     const i = queue.shift();
                     if (i === undefined) return;
-
-                    updateDnsRow(i, { stage: 'checking', status: 'Checking…' });
+                    updateDnsRow(i, { stage: 'checking', status: 'Checking...' });
                     setDnsProgress(`${done} / ${servers.length}`);
-
                     let result;
-                    try {
-                        result = await ipcRenderer.invoke('dns-check-single', {
-                            server: servers[i],
-                            domain,
-                            pingTimeoutMs: 2000,
-                            dnsTimeoutMs: 2500
-                        });
-                    } catch (e) {
-                        result = { ok: false, error: (e && e.message) || 'Error' };
-                    }
-
-                    if (!result?.ok) {
-                        const rowResult = {
-                            ok: false,
-                            ping: { ok: false, timeMs: 0 },
-                            dns: { ok: false, timeMs: 0, answers: [], error: result?.error || 'Error' },
-                            status: 'Error'
-                        };
-                        dnsLastResults[i] = rowResult;
-                        updateDnsRow(i, rowResult);
-                        bad++;
-                    } else {
-                        dnsLastResults[i] = result;
-                        updateDnsRow(i, result);
-                        if (result.status === 'OK') ok++;
-                        else if (result.status === 'Ping Only') pingOnly++;
-                        else bad++;
-                    }
-
+                    try { result = await ipcRenderer.invoke('dns-check-single', { server: servers[i], domain, pingTimeoutMs: 2000, dnsTimeoutMs: 2500 }); }
+                    catch (e) { result = { ok: false, error: (e && e.message) || 'Error' }; }
+                    if (!result?.ok) { const rr = { ok: false, ping: { ok: false, timeMs: 0 }, dns: { ok: false, timeMs: 0, answers: [], error: result?.error || 'Error' }, status: 'Error' }; dnsLastResults[i] = rr; updateDnsRow(i, rr); bad++; }
+                    else { dnsLastResults[i] = result; updateDnsRow(i, result); if (result.status === 'OK') ok++; else if (result.status === 'Ping Only') pingOnly++; else bad++; }
                     done++;
                     setDnsProgress(`${done} / ${servers.length}`, true);
                     setDnsSummaryCounts(ok, pingOnly, bad);
                 }
             };
-
-            // Start a pool of workers
             const workers = [];
-            for (let w = 0; w < Math.min(CONCURRENCY, servers.length); ++w) {
-                workers.push(worker());
-            }
-
+            for (let w = 0; w < Math.min(CONCURRENCY, servers.length); ++w) workers.push(worker());
             await Promise.all(workers);
-
-            if (dnsCheckAbort.aborted) {
-                addLog('DNS Checker: stopped by user');
-            } else {
-                addLog(`DNS Checker finished. OK: ${ok}, Ping Only: ${pingOnly}, Unreachable/Error: ${bad}`, false, true);
-                sortDnsTableFinal();
-            }
-
+            if (dnsCheckAbort.aborted) addLog('DNS Checker: stopped by user');
+            else { addLog(`DNS Checker finished. OK: ${ok}, Ping Only: ${pingOnly}, Unreachable/Error: ${bad}`, false, true); sortDnsTableFinal(); }
             setDnsUiRunning(false);
             setDnsProgress(`${done} / ${servers.length}`, true);
         }
@@ -2083,82 +2474,268 @@ SlipStream VPN Server</pre>
         function stopDnsCheck() {
             dnsCheckAbort.aborted = true;
             setDnsUiRunning(false);
-            setDnsProgress('Stopping…', true);
+            setDnsProgress('Stopping...', true);
         }
 
-        // Listen for status updates
+        /* ============ IPC LISTENERS ============ */
         ipcRenderer.on('status-update', (event, details) => {
             updateStatus(isRunning, details);
-            // Update toggle when status changes
             const toggle = document.getElementById('systemProxyToggle');
-            if (toggle && details.systemProxyConfigured !== undefined) {
-                toggle.checked = details.systemProxyConfigured;
-            }
+            if (toggle && details.systemProxyConfigured !== undefined) toggle.checked = details.systemProxyConfigured;
         });
 
-        // Listen for logs from main process
-        ipcRenderer.on('slipstream-log', (event, data) => {
-            addLog(data.trim());
-        });
+        ipcRenderer.on('slipstream-log', (event, data) => addLog(data.trim()));
+        ipcRenderer.on('slipstream-error', (event, data) => addLog('Error: ' + data.trim(), true));
+        ipcRenderer.on('slipstream-exit', (event, code) => { addLog(`SlipStream client exited with code ${code}`, true); updateStatus(false, {}); });
 
-        ipcRenderer.on('slipstream-error', (event, data) => {
-            addLog('Error: ' + data.trim(), true);
-        });
-
-        ipcRenderer.on('slipstream-exit', (event, code) => {
-            addLog(`SlipStream client exited with code ${code}`, true);
-            updateStatus(false, {});
-        });
-
-        // Don't auto-show the intro modal on startup.
-        // Instead, gently draw attention to the GitHub "Star" button.
-        function animateGitHubStarHint() {
-            const btn = document.querySelector('.github-btn');
-            if (!btn) return;
-            btn.classList.add('attention');
-            setTimeout(() => btn.classList.remove('attention'), 4500);
+        function maybeShowGithubStarModalAfterConnect() {
+            if (hasGithubStarClick() || githubStarModalShownThisSession) return;
+            setTimeout(() => openGithubStarModal(), 900);
         }
-        animateGitHubStarHint();
 
-        // Load version on startup
+        /* ============ INLINE DIALOG HELPERS ============ */
+        function showInputDialog(title, defaultValue) {
+            return new Promise(resolve => {
+                const dialog = document.getElementById('inlineDialog');
+                const titleEl = document.getElementById('inlineDialogTitle');
+                const inputEl = document.getElementById('inlineDialogInput');
+                const msgEl = document.getElementById('inlineDialogMsg');
+                const actionsEl = document.getElementById('inlineDialogActions');
+
+                titleEl.textContent = title;
+                inputEl.style.display = 'block';
+                inputEl.value = defaultValue || '';
+                msgEl.style.display = 'none';
+                actionsEl.innerHTML = '';
+
+                const cancel = document.createElement('button');
+                cancel.className = 'inline-dialog-btn';
+                cancel.textContent = 'Cancel';
+
+                const ok = document.createElement('button');
+                ok.className = 'inline-dialog-btn primary';
+                ok.textContent = 'OK';
+
+                function close(val) {
+                    dialog.classList.remove('show');
+                    inputEl.removeEventListener('keydown', onKey);
+                    resolve(val);
+                }
+
+                function onKey(e) {
+                    if (e.key === 'Enter') close(inputEl.value);
+                    if (e.key === 'Escape') close(null);
+                }
+
+                cancel.onclick = () => close(null);
+                ok.onclick = () => close(inputEl.value);
+                inputEl.addEventListener('keydown', onKey);
+
+                actionsEl.appendChild(cancel);
+                actionsEl.appendChild(ok);
+                dialog.classList.add('show');
+                setTimeout(() => { inputEl.focus(); inputEl.select(); }, 50);
+            });
+        }
+
+        function showConfirmDialog(title, message) {
+            return new Promise(resolve => {
+                const dialog = document.getElementById('inlineDialog');
+                const titleEl = document.getElementById('inlineDialogTitle');
+                const inputEl = document.getElementById('inlineDialogInput');
+                const msgEl = document.getElementById('inlineDialogMsg');
+                const actionsEl = document.getElementById('inlineDialogActions');
+
+                titleEl.textContent = title;
+                inputEl.style.display = 'none';
+                msgEl.style.display = 'block';
+                msgEl.textContent = message;
+                actionsEl.innerHTML = '';
+
+                const cancel = document.createElement('button');
+                cancel.className = 'inline-dialog-btn';
+                cancel.textContent = 'Cancel';
+
+                const ok = document.createElement('button');
+                ok.className = 'inline-dialog-btn danger';
+                ok.textContent = 'Delete';
+
+                function close(val) {
+                    dialog.classList.remove('show');
+                    resolve(val);
+                }
+
+                cancel.onclick = () => close(false);
+                ok.onclick = () => close(true);
+
+                actionsEl.appendChild(cancel);
+                actionsEl.appendChild(ok);
+                dialog.classList.add('show');
+                setTimeout(() => ok.focus(), 50);
+            });
+        }
+
+        /* ============ WORKSPACES / PRESETS ============ */
+        let wsData = [];
+        let wsActiveId = null;
+
+        function renderWorkspaceTabs() {
+            const bar = document.getElementById('workspacesBar');
+            if (!bar) return;
+            bar.querySelectorAll('.ws-tab').forEach(t => t.remove());
+
+            const addBtn = bar.querySelector('.ws-tab-add');
+            wsData.forEach(ws => {
+                const tab = document.createElement('button');
+                tab.className = 'ws-tab' + (ws.id === wsActiveId ? ' active' : '');
+                tab.textContent = ws.name;
+                tab.onclick = () => switchWorkspace(ws.id);
+                bar.insertBefore(tab, addBtn);
+            });
+
+            const actions = document.getElementById('wsActions');
+            if (actions) actions.style.display = wsData.length > 0 ? 'flex' : 'none';
+        }
+
+        function switchWorkspace(id) {
+            saveCurrentFieldsToWorkspace();
+            wsActiveId = id;
+            const ws = wsData.find(w => w.id === id);
+            if (ws) {
+                document.getElementById('resolverInput').value = ws.resolver || '8.8.8.8:53';
+                document.getElementById('domainInput').value = ws.domain || 's.example.com';
+                document.getElementById('proxyBypassInput').value = (ws.proxyBypassList || []).join('\n');
+            }
+            renderWorkspaceTabs();
+            persistWorkspaces();
+        }
+
+        function saveCurrentFieldsToWorkspace() {
+            if (!wsActiveId) return;
+            const ws = wsData.find(w => w.id === wsActiveId);
+            if (!ws) return;
+            ws.resolver = document.getElementById('resolverInput')?.value?.trim() || ws.resolver;
+            ws.domain = document.getElementById('domainInput')?.value?.trim() || ws.domain;
+            const bypassText = document.getElementById('proxyBypassInput')?.value || '';
+            ws.proxyBypassList = bypassText.split('\n').map(s => s.trim()).filter(Boolean);
+        }
+
+        async function addWorkspace() {
+            const name = await showInputDialog('New preset name', '');
+            if (!name || !name.trim()) return;
+
+            saveCurrentFieldsToWorkspace();
+
+            const id = 'ws_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+            const newWs = {
+                id,
+                name: name.trim().slice(0, 64),
+                resolver: document.getElementById('resolverInput')?.value?.trim() || '8.8.8.8:53',
+                domain: document.getElementById('domainInput')?.value?.trim() || 's.example.com',
+                proxyBypassList: (document.getElementById('proxyBypassInput')?.value || '').split('\n').map(s => s.trim()).filter(Boolean)
+            };
+            wsData.push(newWs);
+            wsActiveId = id;
+            renderWorkspaceTabs();
+            persistWorkspaces();
+            addLog(`Preset "${newWs.name}" created`);
+        }
+
+        async function renameActiveWorkspace() {
+            const ws = wsData.find(w => w.id === wsActiveId);
+            if (!ws) return;
+            const name = await showInputDialog('Rename preset', ws.name);
+            if (!name || !name.trim()) return;
+            ws.name = name.trim().slice(0, 64);
+            renderWorkspaceTabs();
+            persistWorkspaces();
+        }
+
+        async function deleteActiveWorkspace() {
+            const ws = wsData.find(w => w.id === wsActiveId);
+            if (!ws) return;
+            const confirmed = await showConfirmDialog('Delete preset', `Are you sure you want to delete "${ws.name}"?`);
+            if (!confirmed) return;
+            wsData = wsData.filter(w => w.id !== wsActiveId);
+            wsActiveId = wsData.length > 0 ? wsData[0].id : null;
+            if (wsActiveId) {
+                const next = wsData.find(w => w.id === wsActiveId);
+                if (next) {
+                    document.getElementById('resolverInput').value = next.resolver || '8.8.8.8:53';
+                    document.getElementById('domainInput').value = next.domain || 's.example.com';
+                    document.getElementById('proxyBypassInput').value = (next.proxyBypassList || []).join('\n');
+                }
+            }
+            renderWorkspaceTabs();
+            persistWorkspaces();
+            addLog(`Preset "${ws.name}" deleted`);
+        }
+
+        async function persistWorkspaces() {
+            saveCurrentFieldsToWorkspace();
+            try {
+                await ipcRenderer.invoke('save-workspaces', { workspaces: wsData, activeWorkspaceId: wsActiveId });
+            } catch (err) {
+                console.error('Failed to persist workspaces:', err);
+            }
+        }
+
+        async function loadWorkspaces(settings, bypassList) {
+            try {
+                const result = await ipcRenderer.invoke('get-workspaces');
+                if (result?.success && Array.isArray(result.workspaces)) {
+                    wsData = result.workspaces;
+                    wsActiveId = result.activeWorkspaceId || (wsData.length > 0 ? wsData[0].id : null);
+                }
+            } catch (_) {}
+
+            if (wsActiveId) {
+                const ws = wsData.find(w => w.id === wsActiveId);
+                if (ws) {
+                    document.getElementById('resolverInput').value = ws.resolver || settings.resolver || '8.8.8.8:53';
+                    document.getElementById('domainInput').value = ws.domain || settings.domain || 's.example.com';
+                    document.getElementById('proxyBypassInput').value = (ws.proxyBypassList || bypassList || []).join('\n');
+                }
+            }
+            renderWorkspaceTabs();
+
+            const resolverEl = document.getElementById('resolverInput');
+            const domainEl = document.getElementById('domainInput');
+            let wsFieldTimer = null;
+            function scheduleWsSave() {
+                if (wsFieldTimer) clearTimeout(wsFieldTimer);
+                wsFieldTimer = setTimeout(() => persistWorkspaces(), 800);
+            }
+            if (resolverEl) resolverEl.addEventListener('input', scheduleWsSave);
+            if (domainEl) domainEl.addEventListener('input', scheduleWsSave);
+            const bypassEl = document.getElementById('proxyBypassInput');
+            if (bypassEl) bypassEl.addEventListener('input', scheduleWsSave);
+        }
+
+        /* ============ INIT ============ */
         async function loadVersion() {
             try {
                 const version = await ipcRenderer.invoke('get-version');
-                const versionBadge = document.getElementById('versionBadge');
-                if (versionBadge) {
-                    versionBadge.textContent = `v${version}`;
-                }
-                const helpVersionBadge = document.getElementById('helpVersionBadge');
-                if (helpVersionBadge) {
-                    helpVersionBadge.textContent = `v${version}`;
-                }
-            } catch (err) {
-                console.error('Failed to load version:', err);
-            }
+                const vb = document.getElementById('versionBadge');
+                if (vb) vb.textContent = `v${version}`;
+                const hvb = document.getElementById('helpVersionBadge');
+                if (hvb) hvb.textContent = `v${version}`;
+            } catch (err) {}
         }
-
-        // Load version immediately
         loadVersion();
 
-        // Check for updates
         let updateInfo = null;
         async function checkForUpdate() {
             try {
                 const result = await ipcRenderer.invoke('check-update');
-                if (result.success && result.hasUpdate) {
-                    updateInfo = result;
-                    showUpdateNotification(result);
-                }
-            } catch (err) {
-                console.error('Failed to check for updates:', err);
-            }
+                if (result.success && result.hasUpdate) { updateInfo = result; showUpdateNotification(result); }
+            } catch (err) {}
         }
 
         function showUpdateNotification(update) {
             const notification = document.getElementById('updateNotification');
             const latestVersionText = document.getElementById('latestVersionText');
             const updateNotificationText = document.getElementById('updateNotificationText');
-            
             if (notification && update) {
                 latestVersionText.textContent = `v${update.latestVersion}`;
                 updateNotificationText.innerHTML = `Version <strong>v${update.latestVersion}</strong> is now available (you have v${update.currentVersion})`;
@@ -2167,72 +2744,50 @@ SlipStream VPN Server</pre>
         }
 
         function dismissUpdate() {
-            const notification = document.getElementById('updateNotification');
-            if (notification) {
-                notification.classList.remove('show');
-            }
+            const n = document.getElementById('updateNotification');
+            if (n) n.classList.remove('show');
         }
 
         async function downloadUpdate() {
-            if (updateInfo && updateInfo.releaseUrl) {
-                await ipcRenderer.invoke('open-external', updateInfo.releaseUrl);
-            }
+            if (updateInfo && updateInfo.releaseUrl) await ipcRenderer.invoke('open-external', updateInfo.releaseUrl);
         }
 
-        // Check for updates on load (after a short delay to not block UI)
-        setTimeout(() => {
-            checkForUpdate();
-        }, 2000);
+        setTimeout(() => checkForUpdate(), 2000);
 
-        // Check status on load
         window.addEventListener('load', async () => {
             const status = await ipcRenderer.invoke('get-status');
             updateStatus(status.isRunning, status.details || {});
-            
-            // Load saved settings
-            const settings = await ipcRenderer.invoke('get-settings');
-            if (settings.resolver) {
-                document.getElementById('resolverInput').value = settings.resolver;
-            }
-            if (settings.domain) {
-                document.getElementById('domainInput').value = settings.domain;
-            }
-            if (settings.verbose !== undefined) {
-                document.getElementById('verboseToggle').checked = settings.verbose;
-            }
 
-            // Load SOCKS5 authentication settings
-            if (settings.socks5AuthEnabled !== undefined) {
-                document.getElementById('socks5AuthToggle').checked = !!settings.socks5AuthEnabled;
-            }
-            if (settings.socks5AuthUsername !== undefined) {
-                document.getElementById('socks5AuthUsername').value = settings.socks5AuthUsername || '';
-            }
-            if (settings.socks5AuthPassword !== undefined) {
-                document.getElementById('socks5AuthPassword').value = settings.socks5AuthPassword || '';
-            }
+            const settings = await ipcRenderer.invoke('get-settings');
+            if (settings.resolver) document.getElementById('resolverInput').value = settings.resolver;
+            if (settings.domain) document.getElementById('domainInput').value = settings.domain;
+            if (settings.verbose !== undefined) document.getElementById('verboseToggle').checked = settings.verbose;
+            if (settings.socks5AuthEnabled !== undefined) document.getElementById('socks5AuthToggle').checked = !!settings.socks5AuthEnabled;
+            if (settings.socks5AuthUsername !== undefined) document.getElementById('socks5AuthUsername').value = settings.socks5AuthUsername || '';
+            if (settings.socks5AuthPassword !== undefined) document.getElementById('socks5AuthPassword').value = settings.socks5AuthPassword || '';
             updateSocks5AuthVisibility();
 
             const socksUserEl = document.getElementById('socks5AuthUsername');
             const socksPassEl = document.getElementById('socks5AuthPassword');
             if (socksUserEl) socksUserEl.addEventListener('input', scheduleSocks5AuthSave);
             if (socksPassEl) socksPassEl.addEventListener('input', scheduleSocks5AuthSave);
-            
-            // Load proxy bypass list
+
+            let bypassList = [];
             try {
                 const bypassResult = await ipcRenderer.invoke('get-proxy-bypass-list');
                 if (bypassResult?.success && Array.isArray(bypassResult.proxyBypassList)) {
+                    bypassList = bypassResult.proxyBypassList;
                     document.getElementById('proxyBypassInput').value = bypassResult.proxyBypassList.join('\n');
                 }
             } catch (_) {}
             const bypassEl = document.getElementById('proxyBypassInput');
             if (bypassEl) bypassEl.addEventListener('input', scheduleProxyBypassSave);
 
-            // Check system proxy status and update toggle (default to ON)
             const proxyStatus = await ipcRenderer.invoke('check-system-proxy');
             const toggle = document.getElementById('systemProxyToggle');
-            // Default to ON if not configured, or match current state
-            toggle.checked = proxyStatus.configured || true; // Default ON
+            toggle.checked = proxyStatus.configured || true;
+
+            await loadWorkspaces(settings, bypassList);
         });
     </script>
 </body>
