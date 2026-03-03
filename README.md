@@ -3,7 +3,7 @@
 
 
 <div align="center">
-  <img src="screen.png" alt="SlipStream GUI Screenshot" width="800">
+  <img src="screen_new.png" alt="SlipStream GUI Screenshot" width="800">
 </div>
 
 
