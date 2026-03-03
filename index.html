@@ -1998,6 +1998,8 @@ SlipStream VPN Server</pre>
                 return;
             }
 
+            // Run DNS checks using a bounded concurrency worker pool
+            const CONCURRENCY = 100;
             dnsCheckAbort = { aborted: false };
             setDnsUiRunning(true);
             dnsLastServers = servers;
@@ -2008,41 +2010,64 @@ SlipStream VPN Server</pre>
 
             let ok = 0, pingOnly = 0, bad = 0, done = 0;
 
-            for (let i = 0; i < servers.length; i++) {
-                if (dnsCheckAbort.aborted) break;
+            // Queue of indices left to check
+            const queue = Array.from({ length: servers.length }, (_, i) => i);
 
-                updateDnsRow(i, { stage: 'checking', status: 'Checking…' });
-                setDnsProgress(`${done} / ${servers.length}`);
+            // Worker function
+            const worker = async () => {
+                while (true) {
+                    if (dnsCheckAbort.aborted) return;
+                    if (queue.length === 0) return;
 
-                const result = await ipcRenderer.invoke('dns-check-single', {
-                    server: servers[i],
-                    domain,
-                    pingTimeoutMs: 2000,
-                    dnsTimeoutMs: 2500
-                });
+                    const i = queue.shift();
+                    if (i === undefined) return;
 
-                if (!result?.ok) {
-                    const rowResult = {
-                        ok: false,
-                        ping: { ok: false, timeMs: 0 },
-                        dns: { ok: false, timeMs: 0, answers: [], error: result?.error || 'Error' },
-                        status: 'Error'
-                    };
-                    dnsLastResults[i] = rowResult;
-                    updateDnsRow(i, rowResult);
-                    bad++;
-                } else {
-                    dnsLastResults[i] = result;
-                    updateDnsRow(i, result);
-                    if (result.status === 'OK') ok++;
-                    else if (result.status === 'Ping Only') pingOnly++;
-                    else bad++;
+                    updateDnsRow(i, { stage: 'checking', status: 'Checking…' });
+                    setDnsProgress(`${done} / ${servers.length}`);
+
+                    let result;
+                    try {
+                        result = await ipcRenderer.invoke('dns-check-single', {
+                            server: servers[i],
+                            domain,
+                            pingTimeoutMs: 2000,
+                            dnsTimeoutMs: 2500
+                        });
+                    } catch (e) {
+                        result = { ok: false, error: (e && e.message) || 'Error' };
+                    }
+
+                    if (!result?.ok) {
+                        const rowResult = {
+                            ok: false,
+                            ping: { ok: false, timeMs: 0 },
+                            dns: { ok: false, timeMs: 0, answers: [], error: result?.error || 'Error' },
+                            status: 'Error'
+                        };
+                        dnsLastResults[i] = rowResult;
+                        updateDnsRow(i, rowResult);
+                        bad++;
+                    } else {
+                        dnsLastResults[i] = result;
+                        updateDnsRow(i, result);
+                        if (result.status === 'OK') ok++;
+                        else if (result.status === 'Ping Only') pingOnly++;
+                        else bad++;
+                    }
+
+                    done++;
+                    setDnsProgress(`${done} / ${servers.length}`, true);
+                    setDnsSummaryCounts(ok, pingOnly, bad);
                 }
+            };
 
-                done++;
-                setDnsProgress(`${done} / ${servers.length}`, true);
-                setDnsSummaryCounts(ok, pingOnly, bad);
+            // Start a pool of workers
+            const workers = [];
+            for (let w = 0; w < Math.min(CONCURRENCY, servers.length); ++w) {
+                workers.push(worker());
             }
+
+            await Promise.all(workers);
 
             if (dnsCheckAbort.aborted) {
                 addLog('DNS Checker: stopped by user');
