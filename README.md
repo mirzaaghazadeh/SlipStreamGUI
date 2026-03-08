@@ -127,7 +127,52 @@ If your server admin gives you a `slipnet://...` URL (from NoizDNS / SlipNet), y
 
 If you are not sure what NoizDNS/SlipNet is, you can safely ignore this option and keep the default **SlipStream** mode.
 
-**Deploying NoizDNS:** To deploy your own NoizDNS server, use **[noizdns-deploy](https://github.com/anonvector/noizdns-deploy)**.
+### Setting Up a NoizDNS Server
+
+To use SlipStream GUI in **SlipNet (NoizDNS)** mode, you need a NoizDNS server running. For detailed instructions on deploying your own NoizDNS server, check out:
+
+🔗 **[noizdns-deploy](https://github.com/anonvector/noizdns-deploy)**
+
+This repository provides a one-click deployment script for setting up a NoizDNS (dnstt) server, including:
+
+- ✅ **One-command installation**: Automated server deployment
+- ✅ **Auto-detection**: Same server supports both standard dnstt and NoizDNS (DPI-evasion) clients
+- ✅ **DNS configuration guide**: Step-by-step DNS setup instructions
+- ✅ **SOCKS5 proxy**: Dante-based SOCKS proxy with optional authentication
+- ✅ **Prebuilt binaries**: Fast installation for supported platforms
+- ✅ **Systemd integration**: Auto-start, restart on failure, security hardening
+- ✅ **Management menu**: Status, logs, restart, reconfigure, update, uninstall
+
+**Quick Server Setup:**
+
+```bash
+# One-command server installation
+bash <(curl -Ls https://raw.githubusercontent.com/anonvector/noizdns-deploy/main/noizdns-deploy.sh)
+```
+
+After installation, run `noizdns` anytime for the management menu.
+
+**What You'll Need:**
+- A Linux server (Fedora, Rocky, CentOS, Debian, or Ubuntu)
+- A domain name with DNS access
+- Root or sudo access on the server
+
+**Before Running the Script** — Configure your DNS records:
+
+| Record | Name | Value |
+|--------|------|-------|
+| **A** | `ns.example.com` | Your server's IP address |
+| **AAAA** | `ns.example.com` | Your server's IPv6 address (optional) |
+| **NS** | `t.example.com` | `ns.example.com` |
+
+Replace `example.com` with your domain. The `t` subdomain is the tunnel endpoint.
+
+**After Server Setup:**
+1. Wait for DNS propagation (can take up to 24 hours)
+2. Generate your `slipnet://` URL (keys and config are in `/etc/noizdns/` — see the [noizdns-deploy](https://github.com/anonvector/noizdns-deploy) repository for details)
+3. In SlipStream GUI, select **SlipNet (NoizDNS)** mode and paste your `slipnet://BASE64...` URL
+4. (Optional) Set a DNS server for SlipNet lookups (e.g., a tunnel-friendly resolver)
+5. Click "Start VPN" to connect!
 
 ### Setting Up a SlipStream Server
 
