@@ -91,6 +91,20 @@
           "filter": [
             "**/*"
           ]
+        },
+        {
+          "from": "binaries/slipnet-darwin-arm64",
+          "to": "binaries/slipnet-darwin-arm64",
+          "filter": [
+            "**/*"
+          ]
+        },
+        {
+          "from": "binaries/slipnet-darwin-amd64",
+          "to": "binaries/slipnet-darwin-amd64",
+          "filter": [
+            "**/*"
+          ]
         }
       ],
       "target": "dmg",
@@ -115,6 +129,13 @@
           "filter": [
             "**/*"
           ]
+        },
+        {
+          "from": "binaries/slipnet-windows-amd64.exe",
+          "to": "binaries/slipnet-windows-amd64.exe",
+          "filter": [
+            "**/*"
+          ]
         }
       ]
     },
@@ -130,6 +151,13 @@
         {
           "from": "binaries/slipstream-client-linux",
           "to": "binaries/slipstream-client-linux",
+          "filter": [
+            "**/*"
+          ]
+        },
+        {
+          "from": "binaries/slipnet-linux-amd64",
+          "to": "binaries/slipnet-linux-amd64",
           "filter": [
             "**/*"
           ]

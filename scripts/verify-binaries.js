@@ -101,7 +101,40 @@ function main() {
 
   for (const f of required) assertBinaryPresent(f);
   // eslint-disable-next-line no-console
-  console.log(`✅ Required binaries present: ${required.join(', ')}`);
+  console.log(`✅ Required SlipStream binaries present: ${required.join(', ')}`);
+
+  // Also check SlipNet binaries (optional - warn instead of fail)
+  const slipnetOptional = [];
+  if (p === 'win') slipnetOptional.push('slipnet-windows-amd64.exe');
+  else if (p === 'mac') {
+    const a = (arch || '').toLowerCase();
+    if (a === 'arm64' || a === 'aarch64') slipnetOptional.push('slipnet-darwin-arm64');
+    else if (a === 'x64' || a === 'amd64' || a === 'intel' || a === 'x86_64')
+      slipnetOptional.push('slipnet-darwin-amd64');
+    else slipnetOptional.push('slipnet-darwin-arm64', 'slipnet-darwin-amd64');
+  }
+  else if (p === 'linux') slipnetOptional.push('slipnet-linux-amd64');
+  else if (p === 'all')
+    slipnetOptional.push(
+      'slipnet-windows-amd64.exe',
+      'slipnet-darwin-arm64',
+      'slipnet-darwin-amd64',
+      'slipnet-linux-amd64'
+    );
+
+  const slipnetFound = [];
+  const slipnetMissing = [];
+  for (const f of slipnetOptional) {
+    try { assertBinaryPresent(f); slipnetFound.push(f); } catch (_) { slipnetMissing.push(f); }
+  }
+  if (slipnetFound.length > 0) {
+    // eslint-disable-next-line no-console
+    console.log(`✅ SlipNet binaries present: ${slipnetFound.join(', ')}`);
+  }
+  if (slipnetMissing.length > 0) {
+    // eslint-disable-next-line no-console
+    console.warn(`⚠️  Optional SlipNet binaries missing: ${slipnetMissing.join(', ')} (NoizDNS will be unavailable)`);
+  }
 }
 
 try {

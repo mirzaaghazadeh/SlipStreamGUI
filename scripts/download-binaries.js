@@ -24,6 +24,9 @@ const { Readable } = require('stream');
 const UPSTREAM_REPO = 'mirzaaghazadeh/slipstream-rust-deploy';
 const API_LATEST = `https://api.github.com/repos/${UPSTREAM_REPO}/releases/latest`;
 
+const SLIPNET_REPO = 'mirzaaghazadeh/SlipNet';
+const SLIPNET_API_LATEST = `https://api.github.com/repos/${SLIPNET_REPO}/releases/latest`;
+
 function parseArgs(argv) {
   const args = { platform: 'all', arch: null };
   for (let i = 2; i < argv.length; i++) {
@@ -131,8 +134,48 @@ async function main() {
     await downloadToFile(asset.browser_download_url, dest);
   }
 
+  // --- Download SlipNet binaries ---
   // eslint-disable-next-line no-console
-  console.log('✅ Done. Binaries are in ./binaries/');
+  console.log('\n📦 Downloading SlipNet (NoizDNS) binaries...');
+
+  let slipnetRelease;
+  try {
+    slipnetRelease = await fetchJson(SLIPNET_API_LATEST);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn(`⚠️  Could not fetch SlipNet release: ${err?.message || err}. Skipping SlipNet binaries.`);
+    // eslint-disable-next-line no-console
+    console.log('✅ Done. SlipStream binaries are in ./binaries/');
+    return;
+  }
+
+  const slipnetTag = slipnetRelease?.tag_name || 'latest';
+  const slipnetAssets = Array.isArray(slipnetRelease?.assets) ? slipnetRelease.assets : [];
+
+  const slipnetMappings = {
+    'mac-arm64': { assetName: 'slipnet-darwin-arm64', outName: 'slipnet-darwin-arm64' },
+    'mac-intel': { assetName: 'slipnet-darwin-amd64', outName: 'slipnet-darwin-amd64' },
+    'linux':     { assetName: 'slipnet-linux-amd64',  outName: 'slipnet-linux-amd64' },
+    'win':       { assetName: 'slipnet-windows-amd64.exe', outName: 'slipnet-windows-amd64.exe' }
+  };
+
+  for (const t of targets) {
+    const mapping = slipnetMappings[t];
+    if (!mapping) continue;
+    const asset = slipnetAssets.find((a) => a && a.name === mapping.assetName);
+    if (!asset || !asset.browser_download_url) {
+      // eslint-disable-next-line no-console
+      console.warn(`⚠️  Missing SlipNet asset "${mapping.assetName}" in ${SLIPNET_REPO} release (${slipnetTag}). Skipping.`);
+      continue;
+    }
+    const dest = path.join(outDir, mapping.outName);
+    // eslint-disable-next-line no-console
+    console.log(`⬇️  ${mapping.assetName} -> binaries/${mapping.outName} (release: ${slipnetTag})`);
+    await downloadToFile(asset.browser_download_url, dest);
+  }
+
+  // eslint-disable-next-line no-console
+  console.log('✅ Done. All binaries are in ./binaries/');
 }
 
 main().catch((err) => {

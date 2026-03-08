@@ -582,6 +582,42 @@
             line-height: 1.4;
         }
 
+        /* Connection Type Selector */
+        .connection-type-selector {
+            display: flex;
+            gap: 8px;
+        }
+
+        .conn-type-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border: 1.5px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-input);
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .conn-type-btn:hover {
+            border-color: var(--accent);
+            color: var(--text-primary);
+            background: var(--accent-glow);
+        }
+
+        .conn-type-btn.active {
+            border-color: var(--accent);
+            background: var(--accent-glow);
+            color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
         /* Toggle Switch */
         .toggle-container {
             position: relative;
@@ -1624,15 +1660,61 @@
 
                     <div class="settings-item">
                         <div class="form-group">
-                            <label class="form-label">DNS Resolver</label>
-                            <input type="text" class="form-input" id="resolverInput" placeholder="8.8.8.8:53" value="8.8.8.8:53">
+                            <label class="form-label">Connection Type</label>
+                            <div class="connection-type-selector" id="connectionTypeSelector">
+                                <button class="conn-type-btn active" data-type="slipstream" onclick="setConnectionType('slipstream')">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                                    SlipStream
+                                </button>
+                                <button class="conn-type-btn" data-type="slipnet" onclick="setConnectionType('slipnet')">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                    SlipNet (NoizDNS)
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="settings-item">
-                        <div class="form-group">
-                            <label class="form-label">Server Domain</label>
-                            <input type="text" class="form-input" id="domainInput" placeholder="s.example.com" value="s.example.com">
+                    <!-- SlipStream fields -->
+                    <div id="slipstreamFields">
+                        <div class="settings-item">
+                            <div class="form-group">
+                                <label class="form-label">DNS Resolver</label>
+                                <input type="text" class="form-input" id="resolverInput" placeholder="8.8.8.8:53" value="8.8.8.8:53">
+                            </div>
+                        </div>
+
+                        <div class="settings-item">
+                            <div class="form-group">
+                                <label class="form-label">Server Domain</label>
+                                <input type="text" class="form-input" id="domainInput" placeholder="s.example.com" value="s.example.com">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SlipNet (NoizDNS) fields -->
+                    <div id="slipnetFields" style="display:none;">
+                        <div class="settings-item">
+                            <div class="form-group">
+                                <label class="form-label">SlipNet URL</label>
+                                <input type="text" class="form-input" id="slipnetUrlInput" placeholder="slipnet://BASE64..." spellcheck="false" autocomplete="off" style="font-family: monospace; font-size: 11px;">
+                                <div class="settings-help">The slipnet:// connection URI from your server config</div>
+                            </div>
+                        </div>
+
+                        <div class="settings-item">
+                            <div class="form-group">
+                                <label class="form-label">DNS Server <span style="color: var(--text-muted); font-weight: normal;">(optional)</span></label>
+                                <input type="text" class="form-input" id="slipnetDnsInput" placeholder="1.1.1.1">
+                                <div class="settings-help">Custom DNS server for SlipNet lookups</div>
+                            </div>
+                        </div>
+
+                        <div class="settings-item">
+                            <div class="form-group">
+                                <label class="form-label">SOCKS5 Port <span style="color: var(--text-muted); font-weight: normal;">(optional)</span></label>
+                                <input type="text" class="form-input" id="slipnetPortInput" placeholder="5201">
+                                <div class="settings-help">Local SOCKS5 port (default: 5201)</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2200,6 +2282,41 @@ SlipStream VPN Server</pre>
             proxyBypassSaveTimer = setTimeout(() => saveProxyBypassList(), 500);
         }
 
+        /* ============ CONNECTION TYPE ============ */
+        let currentConnectionType = 'slipstream';
+
+        function setConnectionType(type) {
+            currentConnectionType = type;
+            // Update button styles
+            document.querySelectorAll('.conn-type-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.type === type);
+            });
+            // Show/hide field groups
+            document.getElementById('slipstreamFields').style.display = type === 'slipstream' ? 'block' : 'none';
+            document.getElementById('slipnetFields').style.display = type === 'slipnet' ? 'block' : 'none';
+            // Persist
+            scheduleConnectionTypeSave();
+        }
+
+        let connTypeSaveTimer = null;
+        function scheduleConnectionTypeSave() {
+            if (connTypeSaveTimer) clearTimeout(connTypeSaveTimer);
+            connTypeSaveTimer = setTimeout(() => saveConnectionType(), 500);
+        }
+
+        async function saveConnectionType() {
+            try {
+                await ipcRenderer.invoke('set-connection-type', {
+                    connectionType: currentConnectionType,
+                    slipnetUrl: document.getElementById('slipnetUrlInput')?.value?.trim() || '',
+                    slipnetDns: document.getElementById('slipnetDnsInput')?.value?.trim() || '',
+                    slipnetPort: document.getElementById('slipnetPortInput')?.value?.trim() || ''
+                });
+            } catch (err) {
+                console.error('Failed to save connection type:', err);
+            }
+        }
+
         /* ============ VPN CONTROLS ============ */
         async function startService() {
             try {
@@ -2221,12 +2338,28 @@ SlipStream VPN Server</pre>
             const domain = document.getElementById('domainInput').value.trim();
             useTunMode = false;
 
-            if (!resolver || !domain) { addLog('Error: Please fill in all settings', true); return; }
+            // Validate based on connection type
+            if (currentConnectionType === 'slipnet') {
+                const slipnetUrl = document.getElementById('slipnetUrlInput')?.value?.trim() || '';
+                if (!slipnetUrl) { addLog('Error: Please enter a SlipNet URL', true); return; }
+                await saveConnectionType();
+            } else {
+                if (!resolver || !domain) { addLog('Error: Please fill in all settings', true); return; }
+            }
 
-            const result = await ipcRenderer.invoke('start-service', { resolver, domain, tunMode: false });
+            const servicePayload = {
+                resolver, domain, tunMode: false,
+                connectionType: currentConnectionType,
+                slipnetUrl: document.getElementById('slipnetUrlInput')?.value?.trim() || '',
+                slipnetDns: document.getElementById('slipnetDnsInput')?.value?.trim() || '',
+                slipnetPort: document.getElementById('slipnetPortInput')?.value?.trim() || ''
+            };
+
+            const result = await ipcRenderer.invoke('start-service', servicePayload);
             updateStatus(result.success, result.details || {});
             if (result.success) {
-                addLog('Service started successfully', false, true);
+                const label = currentConnectionType === 'slipnet' ? 'SlipNet (NoizDNS)' : 'SlipStream';
+                addLog(`${label} service started successfully`, false, true);
                 addLog('HTTP proxy listening on 127.0.0.1:8080');
                 document.getElementById('testBtn').disabled = false;
 
@@ -2605,6 +2738,13 @@ SlipStream VPN Server</pre>
                 document.getElementById('resolverInput').value = ws.resolver || '8.8.8.8:53';
                 document.getElementById('domainInput').value = ws.domain || 's.example.com';
                 document.getElementById('proxyBypassInput').value = (ws.proxyBypassList || []).join('\n');
+                // Restore connection type and SlipNet fields from workspace
+                if (ws.connectionType === 'slipstream' || ws.connectionType === 'slipnet') {
+                    setConnectionType(ws.connectionType);
+                }
+                document.getElementById('slipnetUrlInput').value = ws.slipnetUrl || '';
+                document.getElementById('slipnetDnsInput').value = ws.slipnetDns || '';
+                document.getElementById('slipnetPortInput').value = ws.slipnetPort || '';
             }
             renderWorkspaceTabs();
             persistWorkspaces();
@@ -2618,6 +2758,10 @@ SlipStream VPN Server</pre>
             ws.domain = document.getElementById('domainInput')?.value?.trim() || ws.domain;
             const bypassText = document.getElementById('proxyBypassInput')?.value || '';
             ws.proxyBypassList = bypassText.split('\n').map(s => s.trim()).filter(Boolean);
+            ws.connectionType = currentConnectionType;
+            ws.slipnetUrl = document.getElementById('slipnetUrlInput')?.value?.trim() || '';
+            ws.slipnetDns = document.getElementById('slipnetDnsInput')?.value?.trim() || '';
+            ws.slipnetPort = document.getElementById('slipnetPortInput')?.value?.trim() || '';
         }
 
         async function addWorkspace() {
@@ -2632,7 +2776,11 @@ SlipStream VPN Server</pre>
                 name: name.trim().slice(0, 64),
                 resolver: document.getElementById('resolverInput')?.value?.trim() || '8.8.8.8:53',
                 domain: document.getElementById('domainInput')?.value?.trim() || 's.example.com',
-                proxyBypassList: (document.getElementById('proxyBypassInput')?.value || '').split('\n').map(s => s.trim()).filter(Boolean)
+                proxyBypassList: (document.getElementById('proxyBypassInput')?.value || '').split('\n').map(s => s.trim()).filter(Boolean),
+                connectionType: currentConnectionType,
+                slipnetUrl: document.getElementById('slipnetUrlInput')?.value?.trim() || '',
+                slipnetDns: document.getElementById('slipnetDnsInput')?.value?.trim() || '',
+                slipnetPort: document.getElementById('slipnetPortInput')?.value?.trim() || ''
             };
             wsData.push(newWs);
             wsActiveId = id;
@@ -2664,6 +2812,12 @@ SlipStream VPN Server</pre>
                     document.getElementById('resolverInput').value = next.resolver || '8.8.8.8:53';
                     document.getElementById('domainInput').value = next.domain || 's.example.com';
                     document.getElementById('proxyBypassInput').value = (next.proxyBypassList || []).join('\n');
+                    if (next.connectionType === 'slipstream' || next.connectionType === 'slipnet') {
+                        setConnectionType(next.connectionType);
+                    }
+                    document.getElementById('slipnetUrlInput').value = next.slipnetUrl || '';
+                    document.getElementById('slipnetDnsInput').value = next.slipnetDns || '';
+                    document.getElementById('slipnetPortInput').value = next.slipnetPort || '';
                 }
             }
             renderWorkspaceTabs();
@@ -2695,6 +2849,12 @@ SlipStream VPN Server</pre>
                     document.getElementById('resolverInput').value = ws.resolver || settings.resolver || '8.8.8.8:53';
                     document.getElementById('domainInput').value = ws.domain || settings.domain || 's.example.com';
                     document.getElementById('proxyBypassInput').value = (ws.proxyBypassList || bypassList || []).join('\n');
+                    if (ws.connectionType === 'slipstream' || ws.connectionType === 'slipnet') {
+                        setConnectionType(ws.connectionType);
+                    }
+                    document.getElementById('slipnetUrlInput').value = ws.slipnetUrl || settings.slipnetUrl || '';
+                    document.getElementById('slipnetDnsInput').value = ws.slipnetDns || settings.slipnetDns || '';
+                    document.getElementById('slipnetPortInput').value = ws.slipnetPort || settings.slipnetPort || '';
                 }
             }
             renderWorkspaceTabs();
@@ -2767,6 +2927,14 @@ SlipStream VPN Server</pre>
             if (settings.socks5AuthPassword !== undefined) document.getElementById('socks5AuthPassword').value = settings.socks5AuthPassword || '';
             updateSocks5AuthVisibility();
 
+            // Restore connection type and SlipNet fields
+            if (settings.connectionType === 'slipstream' || settings.connectionType === 'slipnet') {
+                setConnectionType(settings.connectionType);
+            }
+            if (settings.slipnetUrl) document.getElementById('slipnetUrlInput').value = settings.slipnetUrl;
+            if (settings.slipnetDns) document.getElementById('slipnetDnsInput').value = settings.slipnetDns;
+            if (settings.slipnetPort) document.getElementById('slipnetPortInput').value = settings.slipnetPort;
+
             const socksUserEl = document.getElementById('socks5AuthUsername');
             const socksPassEl = document.getElementById('socks5AuthPassword');
             if (socksUserEl) socksUserEl.addEventListener('input', scheduleSocks5AuthSave);
@@ -2782,6 +2950,14 @@ SlipStream VPN Server</pre>
             } catch (_) {}
             const bypassEl = document.getElementById('proxyBypassInput');
             if (bypassEl) bypassEl.addEventListener('input', scheduleProxyBypassSave);
+
+            // Auto-save SlipNet fields on input
+            const slipnetUrlEl = document.getElementById('slipnetUrlInput');
+            const slipnetDnsEl = document.getElementById('slipnetDnsInput');
+            const slipnetPortEl = document.getElementById('slipnetPortInput');
+            if (slipnetUrlEl) slipnetUrlEl.addEventListener('input', scheduleConnectionTypeSave);
+            if (slipnetDnsEl) slipnetDnsEl.addEventListener('input', scheduleConnectionTypeSave);
+            if (slipnetPortEl) slipnetPortEl.addEventListener('input', scheduleConnectionTypeSave);
 
             const proxyStatus = await ipcRenderer.invoke('check-system-proxy');
             const toggle = document.getElementById('systemProxyToggle');

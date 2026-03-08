@@ -33,6 +33,11 @@ let verboseLogging = false; // Verbose logging toggle
 let socks5AuthEnabled = false;
 let socks5AuthUsername = '';
 let socks5AuthPassword = '';
+// Connection type: 'slipstream' (default) or 'slipnet' (NoizDNS)
+let connectionType = 'slipstream';
+let slipnetUrl = ''; // slipnet://BASE64... URI
+let slipnetDns = ''; // optional --dns flag for SlipNet
+let slipnetPort = ''; // optional --port flag for SlipNet (defaults to SOCKS5_PORT)
 // System proxy lifecycle safety (only undo what THIS app enabled)
 let systemProxyEnabledByApp = false;
 let systemProxyServiceName = '';
@@ -109,6 +114,10 @@ function loadSettings() {
       if (Array.isArray(settings.proxyBypassList)) proxyBypassList = settings.proxyBypassList;
       if (Array.isArray(settings.workspaces)) workspaces = settings.workspaces;
       if (typeof settings.activeWorkspaceId === 'string') activeWorkspaceId = settings.activeWorkspaceId;
+      if (settings.connectionType === 'slipstream' || settings.connectionType === 'slipnet') connectionType = settings.connectionType;
+      if (typeof settings.slipnetUrl === 'string') slipnetUrl = settings.slipnetUrl;
+      if (typeof settings.slipnetDns === 'string') slipnetDns = settings.slipnetDns;
+      if (typeof settings.slipnetPort === 'string') slipnetPort = settings.slipnetPort;
     }
   } catch (err) {
     console.error('Failed to load settings:', err);
@@ -134,7 +143,11 @@ function saveSettings(overrides = {}) {
       winInetPrevProxyOverride: overrides.winInetPrevProxyOverride ?? winInetPrevProxyOverride,
       proxyBypassList: overrides.proxyBypassList ?? proxyBypassList,
       workspaces: overrides.workspaces ?? workspaces,
-      activeWorkspaceId: overrides.activeWorkspaceId ?? activeWorkspaceId
+      activeWorkspaceId: overrides.activeWorkspaceId ?? activeWorkspaceId,
+      connectionType: overrides.connectionType ?? connectionType,
+      slipnetUrl: overrides.slipnetUrl ?? slipnetUrl,
+      slipnetDns: overrides.slipnetDns ?? slipnetDns,
+      slipnetPort: overrides.slipnetPort ?? slipnetPort
     };
 
     // Update in-memory state first so UI actions take effect immediately,
@@ -155,6 +168,10 @@ function saveSettings(overrides = {}) {
     proxyBypassList = Array.isArray(next.proxyBypassList) ? next.proxyBypassList : [];
     workspaces = Array.isArray(next.workspaces) ? next.workspaces : [];
     activeWorkspaceId = typeof next.activeWorkspaceId === 'string' ? next.activeWorkspaceId : null;
+    connectionType = (next.connectionType === 'slipstream' || next.connectionType === 'slipnet') ? next.connectionType : 'slipstream';
+    slipnetUrl = typeof next.slipnetUrl === 'string' ? next.slipnetUrl : '';
+    slipnetDns = typeof next.slipnetDns === 'string' ? next.slipnetDns : '';
+    slipnetPort = typeof next.slipnetPort === 'string' ? next.slipnetPort : '';
 
     fs.writeFileSync(settingsPath, JSON.stringify(next, null, 2));
   } catch (err) {
@@ -276,6 +293,151 @@ function getSlipstreamClientPath() {
     return candidates.find((p) => fs.existsSync(p)) || candidates[0];
   }
   return null;
+}
+
+function getSlipnetClientPath() {
+  const platform = process.platform;
+  const resourcesPath = app.isPackaged
+    ? path.join(process.resourcesPath)
+    : __dirname;
+
+  if (platform === 'darwin') {
+    const preferred =
+      process.arch === 'arm64' ? 'slipnet-darwin-arm64' : 'slipnet-darwin-amd64';
+    const fallback =
+      process.arch === 'arm64' ? 'slipnet-darwin-amd64' : 'slipnet-darwin-arm64';
+    const candidates = [
+      path.join(resourcesPath, 'binaries', preferred),
+      path.join(resourcesPath, preferred),
+      path.join(resourcesPath, 'binaries', fallback),
+      path.join(resourcesPath, fallback)
+    ];
+    return candidates.find((p) => fs.existsSync(p)) || candidates[0];
+  } else if (platform === 'win32') {
+    const candidates = [
+      path.join(resourcesPath, 'binaries', 'slipnet-windows-amd64.exe'),
+      path.join(resourcesPath, 'slipnet-windows-amd64.exe')
+    ];
+    return candidates.find((p) => fs.existsSync(p)) || candidates[0];
+  } else if (platform === 'linux') {
+    const candidates = [
+      path.join(resourcesPath, 'binaries', 'slipnet-linux-amd64'),
+      path.join(resourcesPath, 'slipnet-linux-amd64')
+    ];
+    return candidates.find((p) => fs.existsSync(p)) || candidates[0];
+  }
+  return null;
+}
+
+function startSlipnetClient(url, dnsServer, port) {
+  const clientPath = getSlipnetClientPath();
+  if (!clientPath) {
+    throw new Error('Unsupported platform');
+  }
+  if (!fs.existsSync(clientPath)) {
+    const where = app.isPackaged ? 'inside the app resources folder' : 'in the project folder';
+    const baseMsg = `SlipNet client binary not found ${where}.`;
+    const expectedMsg = `Expected at: ${clientPath}`;
+    const hint = 'Download the SlipNet binary from https://github.com/mirzaaghazadeh/SlipNet/releases and place it in the ./binaries/ folder.';
+    throw new Error(`${baseMsg}\n${expectedMsg}\n${hint}`);
+  }
+
+  // Ensure execute permissions on macOS and Linux
+  if ((process.platform === 'darwin' || process.platform === 'linux') && fs.existsSync(clientPath)) {
+    try {
+      fs.accessSync(clientPath, fs.constants.X_OK);
+    } catch (err) {
+      fs.chmodSync(clientPath, 0o755);
+      console.log(`Automatically set execute permissions on ${path.basename(clientPath)}`);
+    }
+  }
+
+  const effectivePort = port || String(SOCKS5_PORT);
+  const args = ['--port', effectivePort];
+  if (dnsServer) {
+    args.push('--dns', dnsServer);
+  }
+  args.push(url);
+
+  slipstreamProcess = spawn(clientPath, args, {
+    stdio: 'pipe',
+    detached: false
+  });
+
+  slipstreamProcess.stdout.on('data', (data) => {
+    console.log(`SlipNet: ${data}`);
+    safeSend('slipstream-log', data.toString());
+    sendStatusUpdate();
+  });
+
+  slipstreamProcess.stderr.on('data', (data) => {
+    let errorStr = data.toString();
+    errorStr = errorStr.replace(/\x1b\[[0-9;]*m/g, '').trim();
+    if (!errorStr) return;
+
+    console.error(`SlipNet Error: ${errorStr}`);
+
+    if (errorStr.includes('Address already in use') || errorStr.includes('EADDRINUSE')) {
+      console.warn(`Port ${effectivePort} is already in use. Trying to kill existing process...`);
+      const { exec } = require('child_process');
+      exec(`lsof -ti:${effectivePort} | xargs kill -9 2>/dev/null`, (err) => {
+        if (!err) {
+          console.log(`Killed process using port ${effectivePort}. Please restart the VPN.`);
+          safeSend('slipstream-error', `Port ${effectivePort} was in use. Killed existing process. Please restart the VPN.`);
+        }
+      });
+    }
+
+    const isResolverPathWarning =
+      (errorStr.includes('Path for resolver') && errorStr.includes('became unavailable')) ||
+      (errorStr.includes('Connection closed') && errorStr.includes('reconnecting'));
+    if (isResolverPathWarning) {
+      safeSend('slipstream-log', errorStr);
+    } else {
+      safeSend('slipstream-error', errorStr);
+    }
+    sendStatusUpdate();
+  });
+
+  slipstreamProcess.on('close', (code) => {
+    console.log(`SlipNet process exited with code ${code}`);
+    slipstreamProcess = null;
+    safeSend('slipstream-exit', code);
+    sendStatusUpdate();
+    if (isRunning) {
+      void cleanupAndDisableProxyIfNeeded('slipnet-exit');
+    }
+  });
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const settle = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      fn(value);
+    };
+
+    slipstreamProcess.once('error', (err) => {
+      const msg = `SlipNet failed to start: ${err.code || 'ERROR'} ${err.message || String(err)}`;
+      console.error(msg);
+      slipstreamProcess = null;
+      safeSend('slipstream-error', msg);
+      safeSend('slipstream-exit', -1);
+      sendStatusUpdate();
+      settle(reject, new Error(`SlipNet client failed to start: ${err.message || String(err)}`));
+    });
+
+    slipstreamProcess.once('spawn', () => {
+      setTimeout(() => {
+        if (slipstreamProcess && !slipstreamProcess.killed) {
+          sendStatusUpdate();
+          settle(resolve);
+        } else {
+          settle(reject, new Error('SlipNet client failed to start'));
+        }
+      }, 2000);
+    });
+  });
 }
 
 function startSlipstreamClient(resolver, domain) {
@@ -1159,8 +1321,15 @@ async function startService(resolver, domain, tunMode = false) {
       domain = DOMAIN;
     }
 
-    // Start Slipstream client (always needed)
-    await startSlipstreamClient(resolver, domain);
+    // Start the appropriate client based on connection type
+    if (connectionType === 'slipnet') {
+      if (!slipnetUrl) {
+        throw new Error('SlipNet URL is required. Please enter a slipnet:// URL in the settings.');
+      }
+      await startSlipnetClient(slipnetUrl, slipnetDns, slipnetPort);
+    } else {
+      await startSlipstreamClient(resolver, domain);
+    }
     
     if (useTunMode) {
       // TUN mode - true system-wide VPN
@@ -1363,6 +1532,13 @@ app.on('before-quit', (event) => {
 
 // IPC handlers
 ipcMain.handle('start-service', async (event, settings) => {
+  // Apply connection type if provided by frontend
+  if (settings?.connectionType === 'slipstream' || settings?.connectionType === 'slipnet') {
+    connectionType = settings.connectionType;
+  }
+  if (typeof settings?.slipnetUrl === 'string') slipnetUrl = settings.slipnetUrl;
+  if (typeof settings?.slipnetDns === 'string') slipnetDns = settings.slipnetDns;
+  if (typeof settings?.slipnetPort === 'string') slipnetPort = settings.slipnetPort;
   return await startService(settings?.resolver, settings?.domain, settings?.tunMode || false);
 });
 
@@ -1391,8 +1567,29 @@ ipcMain.handle('get-settings', () => {
     systemProxyEnabledByApp,
     systemProxyServiceName,
     workspaces,
-    activeWorkspaceId
+    activeWorkspaceId,
+    connectionType,
+    slipnetUrl,
+    slipnetDns,
+    slipnetPort
   };
+});
+
+ipcMain.handle('set-connection-type', (event, payload) => {
+  try {
+    const type = payload?.connectionType;
+    if (type !== 'slipstream' && type !== 'slipnet') {
+      return { success: false, error: 'Invalid connection type' };
+    }
+    const updates = { connectionType: type };
+    if (typeof payload.slipnetUrl === 'string') updates.slipnetUrl = payload.slipnetUrl;
+    if (typeof payload.slipnetDns === 'string') updates.slipnetDns = payload.slipnetDns;
+    if (typeof payload.slipnetPort === 'string') updates.slipnetPort = payload.slipnetPort;
+    saveSettings(updates);
+    return { success: true, connectionType, slipnetUrl, slipnetDns, slipnetPort };
+  } catch (err) {
+    return { success: false, error: err?.message || String(err) };
+  }
 });
 
 ipcMain.handle('get-workspaces', () => {

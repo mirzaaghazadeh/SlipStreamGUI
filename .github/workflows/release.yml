@@ -92,6 +92,37 @@ jobs:
           mv "binaries/$ASSET" "binaries/$OUT"
           ls -lh binaries/
 
+      - name: Download latest SlipNet binary (NoizDNS support)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          REPO="mirzaaghazadeh/SlipNet"
+          mkdir -p binaries
+
+          if [ "${{ matrix.platform }}" == "mac" ]; then
+            if [ "${{ matrix.arch }}" == "arm64" ]; then
+              ASSET="slipnet-darwin-arm64"
+            else
+              ASSET="slipnet-darwin-amd64"
+            fi
+          elif [ "${{ matrix.platform }}" == "linux" ]; then
+            ASSET="slipnet-linux-amd64"
+          elif [ "${{ matrix.platform }}" == "win" ]; then
+            ASSET="slipnet-windows-amd64.exe"
+          else
+            echo "Unknown platform: ${{ matrix.platform }}"
+            exit 1
+          fi
+
+          echo "Downloading $ASSET from $REPO..."
+          gh release download --repo "$REPO" --pattern "$ASSET" --dir binaries || {
+            echo "⚠️ Failed to download SlipNet binary ($ASSET). NoizDNS will be unavailable."
+            exit 0
+          }
+          ls -lh binaries/
+
       - name: Verify required SlipStream client binaries
         shell: bash
         run: |
@@ -121,11 +152,14 @@ jobs:
           if [ "${{ matrix.platform }}" == "mac" ]; then
             if [ "${{ matrix.arch }}" == "arm64" ]; then
               chmod +x binaries/slipstream-client-mac-arm64
+              [ -f binaries/slipnet-darwin-arm64 ] && chmod +x binaries/slipnet-darwin-arm64
             else
               chmod +x binaries/slipstream-client-mac-intel
+              [ -f binaries/slipnet-darwin-amd64 ] && chmod +x binaries/slipnet-darwin-amd64
             fi
           elif [ "${{ matrix.platform }}" == "linux" ]; then
             chmod +x binaries/slipstream-client-linux
+            [ -f binaries/slipnet-linux-amd64 ] && chmod +x binaries/slipnet-linux-amd64
           fi
 
       - name: Build application
