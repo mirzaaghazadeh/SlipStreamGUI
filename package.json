@@ -1,6 +1,6 @@
 {
   "name": "slipstream-gui",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "SlipStream GUI Client with HTTP Proxy",
   "main": "main.js",
   "scripts": {
@@ -61,7 +61,7 @@
   },
   "build": {
     "appId": "com.slipstream.gui",
-    "productName": "SlipStream GUI",
+    "productName": "SlipStream-GUI",
     "publish": null,
     "directories": {
       "output": "dist"
@@ -161,6 +161,7 @@
       ]
     },
     "linux": {
+      "executableName": "slipstream-gui",
       "target": [
         "AppImage",
         "deb"
