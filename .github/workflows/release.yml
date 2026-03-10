@@ -423,6 +423,31 @@ jobs:
             echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
           fi
 
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Find the previous release tag
+          CURRENT="v${{ steps.get_version.outputs.VERSION }}"
+          PREV_TAG=$(git tag --sort=-v:refname | grep -v "^${CURRENT}$" | head -n 1)
+
+          if [ -z "$PREV_TAG" ]; then
+            # No previous tag — list all commits
+            LOG=$(git log --pretty=format:"- %s" -n 50)
+          else
+            LOG=$(git log "${PREV_TAG}..HEAD" --pretty=format:"- %s")
+          fi
+
+          if [ -z "$LOG" ]; then
+            LOG="- No notable changes detected"
+          fi
+
+          # Write multiline output using delimiter
+          {
+            echo "CHANGES<<CHANGELOG_EOF"
+            echo "$LOG"
+            echo "CHANGELOG_EOF"
+          } >> $GITHUB_OUTPUT
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
@@ -441,7 +466,7 @@ jobs:
 
             ### ✨ What's New
 
-            ${{ github.event_name == 'workflow_dispatch' && 'Manual release triggered via GitHub Actions' || format('See the [changelog](https://github.com/{0}/compare/v{1}...main) for details.', github.repository, steps.get_version.outputs.VERSION) }}
+            ${{ steps.changelog.outputs.CHANGES }}
 
             ### 🚀 Quick Start
 
