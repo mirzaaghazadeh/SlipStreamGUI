@@ -81,7 +81,7 @@ If you are not sure what NoizDNS/SlipNet is, just leave **Connection Type** on *
 
 ## 🔍 FindNS Scanner (Advanced)
 
-**FindNS** is a built‑in scanner that helps you find good DNS resolvers for tunnels:
+**FindNS** is a built‑in scanner that helps you find good DNS resolvers for tunnels. It fetches resolver lists automatically from `SamNet-dev/findns`, so manual resolver downloads are not required:
 
 1. Click **FindNS** in the header
 2. (Optional) Enter a **Tunnel Domain** (for example `t.example.com`) to enable tunnel/EDNS/e2e checks
@@ -257,4 +257,3 @@ xattr -cr /Applications/SlipStream\ GUI.app
 <div align="center">
   <strong>Made for those we remember</strong>
 </div>
-

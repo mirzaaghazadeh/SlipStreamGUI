@@ -224,7 +224,7 @@ bash <(curl -Ls https://raw.githubusercontent.com/AliRezaBeigy/slipstream-rust-d
 - 📊 **Real-Time Status**: Monitor VPN connection status at a glance
 - 🌐 **Concurrent DNS Checker**: Tests many DNS servers at once and lets you apply any **OK** result with one click
 - 🛰️ **NoizDNS (SlipNet) Mode**: Alternate connection mode for DNS-tunnel transports using `slipnet://` URLs
-- 🧭 **FindNS Scanner**: Fetches and ranks public DNS resolvers for tunnels and lets you apply a result directly as your `DNS Resolver`
+- 🧭 **FindNS Scanner**: Fetches and ranks public DNS resolvers for tunnels, auto-downloads resolver lists from `SamNet-dev/findns`, and lets you apply a result directly as your `DNS Resolver`
 - 🚀 **Congestion Control**: Choose between BBR (throughput-optimized, default) and dCUBIC (fairness-optimized) algorithms for SlipStream connections
 - 🔐 **Per-Preset SOCKS5 Auth**: SOCKS5 username and password are saved individually per preset, not globally
 - 🌍 **FindNS Proxy Routing**: Optionally route FindNS resolver list downloads through the active VPN tunnel to bypass local restrictions

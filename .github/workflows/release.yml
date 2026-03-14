@@ -123,7 +123,7 @@ jobs:
           }
           ls -lh binaries/
 
-      - name: Download latest FindNS binary (DNS resolver scanner)
+      - name: Download latest FindNS binary (from SamNet-dev/findns)
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
